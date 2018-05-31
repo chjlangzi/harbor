@@ -331,17 +331,24 @@ func (ua *UserAPI) modifiable() bool {
 
 // validate only validate when user register
 func validate(user models.User) error {
+	err := validateName(user)
+	if err != nil {
+		return err
+	}
+	if isIllegalLength(user.Password, 8, 20) {
+		return fmt.Errorf("password with illegal length")
+	}
+	return commonValidate(user)
+}
 
+func validateName(user models.User) error {
 	if isIllegalLength(user.Username, 1, 20) {
 		return fmt.Errorf("username with illegal length")
 	}
 	if isContainIllegalChar(user.Username, []string{",", "~", "#", "$", "%"}) {
 		return fmt.Errorf("username contains illegal characters")
 	}
-	if isIllegalLength(user.Password, 8, 20) {
-		return fmt.Errorf("password with illegal length")
-	}
-	return commonValidate(user)
+	return nil;
 }
 
 //commonValidate validates email, realname, comment information when user register or change their profile

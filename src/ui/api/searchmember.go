@@ -44,7 +44,7 @@ func (s *SearchAPI) GetByUsername() {
 	if isAuthenticated && isSysAdmin {
 		log.Warningf("user is authenticate and isSystemAdmin")
 		queryUser := models.User{Username:username}
-		err := validate(queryUser)
+		err := validateName(queryUser)
 		if err != nil {
 			log.Warningf("Bad request in Register: %v", err)
 			s.RenderError(http.StatusBadRequest, "register error:"+err.Error())
