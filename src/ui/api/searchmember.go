@@ -26,49 +26,74 @@ import (
 	"github.com/vmware/harbor/src/common/utils/log"
 )
 
-// SearchAPI handles requesst to /api/membersearch
+// SearchAPI handles requesst to search/:username
 
 // Get ...
-func (s *SearchAPI) GetByMember() {
+func (s *SearchAPI) GetByUsername() {
 	keyword := s.GetString("q")
-	//member := s.GetString("member")
+	username := s.GetStringFromPath(":username")
+
+	log.Warningf("request param q: %s,member:%s", keyword,username)
 	isAuthenticated := s.SecurityCtx.IsAuthenticated()
 	isSysAdmin := s.SecurityCtx.IsSysAdmin()
 
 	var projects []*models.Project
 	var err error
+	var user *models.User
 
-	if isSysAdmin {
-		result, err := s.ProjectMgr.List(nil)
+	if isAuthenticated && isSysAdmin {
+		log.Warningf("user is authenticate and isSystemAdmin")
+		queryUser := models.User{Username:username}
+		err := validate(queryUser)
 		if err != nil {
-			s.ParseAndHandleError("failed to get projects", err)
+			log.Warningf("Bad request in Register: %v", err)
+			s.RenderError(http.StatusBadRequest, "register error:"+err.Error())
 			return
 		}
-		projects = result.Projects
-	} else {
+
+		log.Warningf("after validate")
+		user,err = dao.GetUser(queryUser)
+
+		if err == nil {
+			log.Errorf("get user by username error: %v", err)
+			s.CustomAbort(http.StatusInternalServerError, "Internal error.")
+		}
+		if user == nil {
+			log.Warning("user with username : %S not found!",username)
+			s.RenderError(http.StatusConflict, "user not found!")
+			return
+		}
+		log.Warningf("get user success")
 		projects, err = s.ProjectMgr.GetPublic()
 		if err != nil {
 			s.ParseAndHandleError("failed to get projects", err)
 			return
 		}
-		if isAuthenticated {
-			mys, err := s.SecurityCtx.GetMyProjects()
-			if err != nil {
-				s.HandleInternalServerError(fmt.Sprintf(
-					"failed to get projects: %v", err))
-				return
-			}
-			exist := map[int64]bool{}
-			for _, p := range projects {
-				exist[p.ProjectID] = true
-			}
+		log.Warningf("after get public projects")
+		//取出projects
+		mys, mErr := dao.GetProjects(&models.ProjectQueryParam{
+			Member: &models.MemberQuery{
+				Name: user.Username,
+			},
+		})
 
-			for _, p := range mys {
-				if !exist[p.ProjectID] {
-					projects = append(projects, p)
-				}
+		if mErr != nil {
+			s.HandleInternalServerError(fmt.Sprintf(
+				"failed to get projects: %v", err))
+			return
+		}
+		log.Warningf("after get projects of user:%s",username)
+		exist := map[int64]bool{}
+		for _, p := range projects {
+			exist[p.ProjectID] = true
+		}
+
+		for _, p := range mys {
+			if !exist[p.ProjectID] {
+				projects = append(projects, p)
 			}
 		}
+
 	}
 
 	projectSorter := &models.ProjectSorter{Projects: projects}
@@ -79,15 +104,13 @@ func (s *SearchAPI) GetByMember() {
 			continue
 		}
 
-		if isAuthenticated {
-			roles := s.SecurityCtx.GetProjectRoles(p.ProjectID)
-			if len(roles) != 0 {
-				p.Role = roles[0]
-			}
+		roles := getProjectRoles(p,user)
+		if len(roles) != 0 {
+			p.Role = roles[0]
+		}
 
-			if p.Role == common.RoleProjectAdmin || isSysAdmin {
-				p.Togglable = true
-			}
+		if p.Role == common.RoleProjectAdmin {
+			p.Togglable = true
 		}
 
 		total, err := dao.GetTotalOfRepositories(&models.RepositoryQuery{
@@ -112,4 +135,25 @@ func (s *SearchAPI) GetByMember() {
 	result := &searchResult{Project: projectResult, Repository: repositoryResult}
 	s.Data["json"] = result
 	s.ServeJSON()
+}
+
+func getProjectRoles(project *models.Project,user *models.User) []int {
+	roles := []int{}
+	roleList, err := dao.GetUserProjectRoles(user.UserID, project.ProjectID, common.UserMember)
+	if err != nil {
+		log.Errorf("failed to get roles of user %d to project %d: %v", user.UserID, project.ProjectID, err)
+		return roles
+	}
+
+	for _, role := range roleList {
+		switch role.RoleCode {
+		case "MDRWS":
+			roles = append(roles, common.RoleProjectAdmin)
+		case "RWS":
+			roles = append(roles, common.RoleDeveloper)
+		case "RS":
+			roles = append(roles, common.RoleGuest)
+		}
+	}
+	return roles
 }
