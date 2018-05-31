@@ -54,7 +54,7 @@ func (s *SearchAPI) GetByUsername() {
 		log.Warningf("after validate")
 		user,err = dao.GetUser(queryUser)
 
-		if err == nil {
+		if err != nil {
 			log.Errorf("get user by username error: %v", err)
 			s.CustomAbort(http.StatusInternalServerError, "Internal error.")
 		}
