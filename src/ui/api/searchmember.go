@@ -17,13 +17,13 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"sort"
-	"strings"
-
 	"github.com/vmware/harbor/src/common"
 	"github.com/vmware/harbor/src/common/dao"
 	"github.com/vmware/harbor/src/common/models"
 	"github.com/vmware/harbor/src/common/utils/log"
+	"github.com/vmware/harbor/src/ui/config"
+	"strings"
+	"sort"
 )
 
 // SearchAPI handles requesst to search/:username
@@ -40,6 +40,19 @@ func (s *SearchAPI) GetByUsername() {
 	var projects []*models.Project
 	var err error
 	var user *models.User
+
+	mode, err := config.AuthMode()
+	if err != nil {
+		log.Errorf("failed to get auth mode: %v", err)
+		s.CustomAbort(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+
+	if mode != common.DBAuth {
+		log.Errorf("auth mode need to be : db_auth ")
+		s.CustomAbort(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
 
 	if isAuthenticated && isSysAdmin {
 		log.Warningf("user is authenticate and isSystemAdmin")
@@ -60,7 +73,7 @@ func (s *SearchAPI) GetByUsername() {
 		}
 		if user == nil {
 			log.Warning("user with username : %S not found!",username)
-			s.RenderError(http.StatusConflict, "user not found!")
+			s.RenderError(http.StatusNotFound, "query user not found!")
 			return
 		}
 		log.Warningf("get user success")
@@ -94,47 +107,50 @@ func (s *SearchAPI) GetByUsername() {
 			}
 		}
 
-	}
+		projectSorter := &models.ProjectSorter{Projects: projects}
+		sort.Sort(projectSorter)
+		projectResult := []*models.Project{}
+		for _, p := range projects {
+			if len(keyword) > 0 && !strings.Contains(p.Name, keyword) {
+				continue
+			}
 
-	projectSorter := &models.ProjectSorter{Projects: projects}
-	sort.Sort(projectSorter)
-	projectResult := []*models.Project{}
-	for _, p := range projects {
-		if len(keyword) > 0 && !strings.Contains(p.Name, keyword) {
-			continue
+			roles := getProjectRoles(p,user)
+			if len(roles) != 0 {
+				p.Role = roles[0]
+			}
+
+			if p.Role == common.RoleProjectAdmin {
+				p.Togglable = true
+			}
+
+			total, err := dao.GetTotalOfRepositories(&models.RepositoryQuery{
+				ProjectIDs: []int64{p.ProjectID},
+			})
+			if err != nil {
+				log.Errorf("failed to get total of repositories of project %d: %v", p.ProjectID, err)
+				s.CustomAbort(http.StatusInternalServerError, "")
+			}
+
+			p.RepoCount = total
+
+			projectResult = append(projectResult, p)
 		}
 
-		roles := getProjectRoles(p,user)
-		if len(roles) != 0 {
-			p.Role = roles[0]
-		}
-
-		if p.Role == common.RoleProjectAdmin {
-			p.Togglable = true
-		}
-
-		total, err := dao.GetTotalOfRepositories(&models.RepositoryQuery{
-			ProjectIDs: []int64{p.ProjectID},
-		})
+		repositoryResult, err := filterRepositories(projects, keyword)
 		if err != nil {
-			log.Errorf("failed to get total of repositories of project %d: %v", p.ProjectID, err)
+			log.Errorf("failed to filter repositories: %v", err)
 			s.CustomAbort(http.StatusInternalServerError, "")
 		}
 
-		p.RepoCount = total
-
-		projectResult = append(projectResult, p)
+		result := &searchResult{Project: projectResult, Repository: repositoryResult}
+		s.Data["json"] = result
+		s.ServeJSON()
+	}else{
+		s.CustomAbort(http.StatusUnauthorized, "Unauthorized or login user is not admin!")
+		return
 	}
 
-	repositoryResult, err := filterRepositories(projects, keyword)
-	if err != nil {
-		log.Errorf("failed to filter repositories: %v", err)
-		s.CustomAbort(http.StatusInternalServerError, "")
-	}
-
-	result := &searchResult{Project: projectResult, Repository: repositoryResult}
-	s.Data["json"] = result
-	s.ServeJSON()
 }
 
 func getProjectRoles(project *models.Project,user *models.User) []int {

@@ -42,6 +42,41 @@ paths:
               $ref: '#/definitions/Search'
         '500':
           description: Unexpected internal errors.
+  /search/{username}:
+      get:
+        summary: admin user to Search projects and repositories by username
+        description: >
+          The Search endpoint returns information about the projects and
+          repositories
+
+          offered at public status or related to the query user. The
+
+          response includes the project and repository list in a proper
+
+          display order.
+        parameters:
+          - name: q
+            in: query
+            description: Search parameter for project and repository name.
+            required: false
+            type: string
+        tags:
+          - Products
+        responses:
+          '200':
+            description: An array of search results
+            schema:
+              type: array
+              items:
+                $ref: '#/definitions/Search'
+          '400':
+            description: Illegal format of username value.
+          '401':
+            description: Unauthorized or login user is not admin.
+          '403':
+            description: query user not found.
+          '500':
+            description: Unexpected internal errors.
   /projects:
     get:
       summary: List projects
