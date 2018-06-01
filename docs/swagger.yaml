@@ -60,6 +60,11 @@ paths:
             description: Search parameter for project and repository name.
             required: false
             type: string
+          - name: username
+            in: path
+            description: username for user's project and repository results.
+            required: true
+            type: string
         tags:
           - Products
         responses:
