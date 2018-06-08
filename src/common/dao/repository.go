@@ -178,3 +178,70 @@ func repositoryQueryConditions(query ...*models.RepositoryQuery) (string, []inte
 
 	return sql, params
 }
+
+// GetRepositories ...
+func GetRepositoriesWithProject(query ...*models.RepositoryQuery) ([]*models.RepoWithProjectView, error) {
+	repositories := []*models.RepoWithProjectView{}
+
+	sql, params := repositoryQueryConditionsWithProject(query...)
+	sql = `r.repository_id,r.name,r.project_id,r.description,pp.project_name,pp.pm_name ` + sql + `order by r.name `
+	if len(query) > 0 && query[0] != nil {
+		page, size := query[0].Page, query[0].Size
+		if size > 0 {
+			sql += `limit ? `
+			params = append(params, size)
+			if page > 0 {
+				sql += `offset ? `
+				params = append(params, size*(page-1))
+			}
+		}
+	}
+
+	fmt.Printf("get repositories with project sql>:",sql)
+
+	if _, err := GetOrmer().Raw(sql, params).QueryRows(&repositories); err != nil {
+		return nil, err
+	}
+
+	return repositories, nil
+}
+
+func repositoryQueryConditionsWithProject(query ...*models.RepositoryQuery) (string, []interface{}) {
+	params := []interface{}{}
+	sql := `from repository r , (select p.project_id,p.name as project_name,pm.name as pm_name from project_metadata pm,project p where p.project_id = pm.project_id and p.deleted = 0) pp `
+	if len(query) == 0 || query[0] == nil {
+		return sql, params
+	}
+	q := query[0]
+
+	if q.LabelID > 0 {
+		sql += `join harbor_resource_label rl on r.repository_id = rl.resource_id 
+		and rl.resource_type = 'r' `
+	}
+	sql += `where 1=1 and r.project_id = pp.project_id `
+
+	if len(q.Name) > 0 {
+		sql += `and r.name like ? `
+		params = append(params, "%"+Escape(q.Name)+"%")
+	}
+
+	if len(q.ProjectIDs) > 0 {
+		sql += fmt.Sprintf(`and r.project_id in ( %s ) `,
+			paramPlaceholder(len(q.ProjectIDs)))
+		params = append(params, q.ProjectIDs)
+	}
+
+	if len(q.ProjectName) > 0 {
+		// use "like" rather than "table joining" because that
+		// in integration mode the projects are saved in Admiral side
+		sql += `and r.name like ? `
+		params = append(params, q.ProjectName+"/%")
+	}
+
+	if q.LabelID > 0 {
+		sql += `and rl.label_id = ? `
+		params = append(params, q.LabelID)
+	}
+
+	return sql, params
+}

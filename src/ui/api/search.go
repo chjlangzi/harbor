@@ -33,6 +33,13 @@ type SearchAPI struct {
 	BaseController
 }
 
+type searchRepositoryPageResult struct {
+	total int64
+	page int64
+	page_size int64
+	Repository []*models.RepoWithProjectView `json:"repository"`
+}
+
 type searchResult struct {
 	Project    []*models.Project        `json:"project"`
 	Repository []map[string]interface{} `json:"repository"`

@@ -33,6 +33,15 @@ type RepoRecord struct {
 	UpdateTime   time.Time `orm:"column(update_time);auto_now" json:"update_time"`
 }
 
+type RepoWithProjectView struct {
+	RepositoryID int64     `orm:"pk;auto;column(repository_id)" json:"repository_id"`
+	Name         string    `orm:"column(name)" json:"name"`
+	ProjectID    int64     `orm:"column(project_id)"  json:"project_id"`
+	Description  string    `orm:"column(description)" json:"description"`
+	ProjectName string `orm:"column(project_name)" json:"project_name"`
+	Pb bool `orm:"column(pm_name) json:"pb"`
+}
+
 //TableName is required by by beego orm to map RepoRecord to table repository
 func (rp *RepoRecord) TableName() string {
 	return RepoTable

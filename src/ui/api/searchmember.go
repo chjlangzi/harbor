@@ -22,18 +22,14 @@ import (
 	"github.com/vmware/harbor/src/common/models"
 	"github.com/vmware/harbor/src/common/utils/log"
 	"github.com/vmware/harbor/src/ui/config"
-	"strings"
-	"sort"
 )
 
 // SearchAPI handles requesst to search/:username
 
 // Get ...
-func (s *SearchAPI) GetByUsername() {
-	keyword := s.GetString("q")
+func (s *SearchAPI) SearchByUsername() {
 	username := s.GetStringFromPath(":username")
 
-	log.Warningf("request param q: %s,member:%s", keyword,username)
 	isAuthenticated := s.SecurityCtx.IsAuthenticated()
 	isSysAdmin := s.SecurityCtx.IsSysAdmin()
 
@@ -96,6 +92,8 @@ func (s *SearchAPI) GetByUsername() {
 			return
 		}
 		log.Warningf("after get projects of user:%s",username)
+
+
 		exist := map[int64]bool{}
 		for _, p := range projects {
 			exist[p.ProjectID] = true
@@ -107,43 +105,34 @@ func (s *SearchAPI) GetByUsername() {
 			}
 		}
 
-		projectSorter := &models.ProjectSorter{Projects: projects}
-		sort.Sort(projectSorter)
-		projectResult := []*models.Project{}
-		for _, p := range projects {
-			if len(keyword) > 0 && !strings.Contains(p.Name, keyword) {
-				continue
-			}
-
-			roles := getProjectRoles(p,user)
-			if len(roles) != 0 {
-				p.Role = roles[0]
-			}
-
-			if p.Role == common.RoleProjectAdmin {
-				p.Togglable = true
-			}
-
-			total, err := dao.GetTotalOfRepositories(&models.RepositoryQuery{
-				ProjectIDs: []int64{p.ProjectID},
-			})
-			if err != nil {
-				log.Errorf("failed to get total of repositories of project %d: %v", p.ProjectID, err)
-				s.CustomAbort(http.StatusInternalServerError, "")
-			}
-
-			p.RepoCount = total
-
-			projectResult = append(projectResult, p)
+		projectIds := make([]int64, len(projects))
+		for i, p := range projects {
+			projectIds[i] = p.ProjectID
 		}
 
-		repositoryResult, err := filterRepositories(projects, keyword)
-		if err != nil {
-			log.Errorf("failed to filter repositories: %v", err)
+		page, size := s.GetPaginationParams()
+		query := &models.RepositoryQuery{
+			ProjectIDs: projectIds,
+			Name: s.GetString("q"),
+			Pagination: models.Pagination{
+				Page: page,
+				Size: size,
+			},
+		}
+
+		total, tErr := dao.GetTotalOfRepositories(query)
+		if tErr != nil {
+			log.Errorf("failed to get total of repositories %v", err)
 			s.CustomAbort(http.StatusInternalServerError, "")
 		}
 
-		result := &searchResult{Project: projectResult, Repository: repositoryResult}
+		repositoryResult,rErr:= dao.GetRepositoriesWithProject(query)
+
+		if rErr != nil {
+			log.Errorf("failed to filter repositories: %v", err)
+			s.CustomAbort(http.StatusInternalServerError, "")
+		}
+		result := &searchRepositoryPageResult{total: total, page: page, page_size: size, Repository: repositoryResult}
 		s.Data["json"] = result
 		s.ServeJSON()
 	}else{
@@ -151,25 +140,4 @@ func (s *SearchAPI) GetByUsername() {
 		return
 	}
 
-}
-
-func getProjectRoles(project *models.Project,user *models.User) []int {
-	roles := []int{}
-	roleList, err := dao.GetUserProjectRoles(user.UserID, project.ProjectID, common.UserMember)
-	if err != nil {
-		log.Errorf("failed to get roles of user %d to project %d: %v", user.UserID, project.ProjectID, err)
-		return roles
-	}
-
-	for _, role := range roleList {
-		switch role.RoleCode {
-		case "MDRWS":
-			roles = append(roles, common.RoleProjectAdmin)
-		case "RWS":
-			roles = append(roles, common.RoleDeveloper)
-		case "RS":
-			roles = append(roles, common.RoleGuest)
-		}
-	}
-	return roles
 }
