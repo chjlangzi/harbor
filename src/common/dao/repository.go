@@ -184,7 +184,7 @@ func GetRepositoriesWithProject(query ...*models.RepositoryQuery) ([]*models.Rep
 	repositories := []*models.RepoWithProjectView{}
 
 	sql, params := repositoryQueryConditionsWithProject(query...)
-	sql = `r.repository_id,r.name,r.project_id,r.description,pp.project_name,pp.pm_name ` + sql + `order by r.name `
+	sql = `select r.repository_id,r.name,r.project_id,r.description,pp.project_name,pp.pm_name ` + sql + `order by r.name `
 	if len(query) > 0 && query[0] != nil {
 		page, size := query[0].Page, query[0].Size
 		if size > 0 {
