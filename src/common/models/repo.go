@@ -39,7 +39,7 @@ type RepoWithProjectView struct {
 	ProjectID    int64     `orm:"column(project_id)"  json:"project_id"`
 	Description  string    `orm:"column(description)" json:"description"`
 	ProjectName string `orm:"column(project_name)" json:"project_name"`
-	Pb string `orm:"column(pb) json:"pb"`
+	Pb string `orm:"column(pb)" json:"pb"`
 }
 
 //TableName is required by by beego orm to map RepoRecord to table repository
