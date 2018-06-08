@@ -208,7 +208,7 @@ func GetRepositoriesWithProject(query ...*models.RepositoryQuery) ([]*models.Rep
 
 func repositoryQueryConditionsWithProject(query ...*models.RepositoryQuery) (string, []interface{}) {
 	params := []interface{}{}
-	sql := `from repository r , (select p.project_id,p.name as project_name,pm.value as pb from project_metadata pm,project p where p.project_id = pm.project_id and p.deleted = 0) pp `
+	sql := `from repository r , (select p.project_id,p.name as project_name,pm.value as pb from project_metadata pm,project p where p.project_id = pm.project_id and p.deleted = 0  and pm.name='public' ) pp `
 	if len(query) == 0 || query[0] == nil {
 		return sql, params
 	}
