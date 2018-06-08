@@ -42,24 +42,33 @@ paths:
               $ref: '#/definitions/Search'
         '500':
           description: Unexpected internal errors.
-  /search/{username}:
+  /searchRepo/{username}:
       get:
         summary: admin user to Search projects and repositories by username
         description: >
-          The Search endpoint returns information about the projects and
-          repositories
+          The Search endpoint returns information about the repositories
 
           offered at public status or related to the query user. The
 
-          response includes the project and repository list in a proper
+          response includes the repository list in a proper
 
           display order.
         parameters:
           - name: q
             in: query
-            description: Search parameter for project and repository name.
+            description: Search parameter for repository name.
             required: false
             type: string
+          - name: page
+            in: query
+            description: Search parameter search page.
+            required: false
+            type: int64
+          - name: page_size
+            in: query
+            description: Search parameter page size
+            required: false
+            type: int64
           - name: username
             in: path
             description: username for user's project and repository results.
