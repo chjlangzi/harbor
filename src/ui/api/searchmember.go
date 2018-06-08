@@ -24,7 +24,7 @@ import (
 	"github.com/vmware/harbor/src/ui/config"
 )
 
-// SearchAPI handles requesst to search/:username
+// SearchAPI handles requesst to SearchByUsername/:username
 
 // Get ...
 func (s *SearchAPI) SearchByUsername() {

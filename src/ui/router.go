@@ -65,7 +65,7 @@ func initRouters() {
 	// API
 	beego.Router("/api/ping", &api.SystemInfoAPI{}, "get:Ping")
 	beego.Router("/api/search", &api.SearchAPI{})
-	beego.Router("/api/searchRepo/:username", &api.SearchAPI{},"get:SearchByUsername")
+	beego.Router("/api/searchrepo/:username", &api.SearchAPI{},"get:SearchByUsername")
 	beego.Router("/api/projects/", &api.ProjectAPI{}, "get:List;post:Post")
 	beego.Router("/api/projects/:id([0-9]+)/logs", &api.ProjectAPI{}, "get:Logs")
 	beego.Router("/api/projects/:id([0-9]+)/_deletable", &api.ProjectAPI{}, "get:Deletable")

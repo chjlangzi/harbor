@@ -42,7 +42,7 @@ paths:
               $ref: '#/definitions/Search'
         '500':
           description: Unexpected internal errors.
-  /searchRepo/{username}:
+  /searchrepo/{username}:
       get:
         summary: admin user to Search projects and repositories by username
         description: >
