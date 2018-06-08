@@ -34,10 +34,10 @@ type SearchAPI struct {
 }
 
 type searchRepositoryPageResult struct {
-	total int64 `json:"total"`
-	page int64 `json:"page"`
-	page_size int64 `json:"page_size"`
-	Repository []*models.RepoWithProjectView `json:"repository"`
+	Total int64 `json:"total"`
+	Page int64 `json:"page"`
+	Page_size int64 `json:"page_size"`
+	Repository []*models.RepoWithProjectView `json:"repositories"`
 }
 
 type searchResult struct {

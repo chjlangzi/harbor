@@ -132,7 +132,7 @@ func (s *SearchAPI) SearchByUsername() {
 			log.Errorf("failed to filter repositories: %v", err)
 			s.CustomAbort(http.StatusInternalServerError, "")
 		}
-		result := &searchRepositoryPageResult{total: total, page: page, page_size: size, Repository: repositoryResult}
+		result := &searchRepositoryPageResult{Total: total, Page: page, Page_size: size, Repository: repositoryResult}
 		s.Data["json"] = result
 		s.ServeJSON()
 	}else{
