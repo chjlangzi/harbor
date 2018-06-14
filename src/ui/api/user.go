@@ -43,6 +43,10 @@ type passwordReq struct {
 	NewPassword string `json:"new_password"`
 }
 
+type addUserResult struct {
+	UserId int64 `json:"userId"`
+}
+
 // Prepare validates the URL and parms
 func (ua *UserAPI) Prepare() {
 	ua.BaseController.Prepare()
@@ -247,7 +251,12 @@ func (ua *UserAPI) Post() {
 		ua.CustomAbort(http.StatusInternalServerError, "Internal error.")
 	}
 
-	ua.Redirect(http.StatusCreated, strconv.FormatInt(userID, 10))
+	ua.Ctx.ResponseWriter.WriteHeader(http.StatusCreated);
+	result := &addUserResult{userID};
+	ua.Data["json"] = result;
+	ua.ServeJSON()
+
+	//ua.Redirect(http.StatusCreated, strconv.FormatInt(userID, 10))
 }
 
 // Delete ...
