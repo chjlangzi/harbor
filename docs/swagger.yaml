@@ -2701,15 +2701,15 @@ definitions:
         description: >-
           Whether content trust is enabled or not. If it is enabled, user cann't
           pull unsigned images from this project.
-      prevent_vulnerable_images_from_running:
+      prevent_vul:
         type: boolean
         description: Whether prevent the vulnerable images from running.
-      prevent_vulnerable_images_from_running_severity:
+      severity:
         type: string
         description: >-
           If the vulnerability is high than severity defined here, the images
           cann't be pulled.
-      automatically_scan_images_on_push:
+      auto_scan:
         type: boolean
         description: Whether scan images automatically when pushing.
   Project:
@@ -2767,15 +2767,15 @@ definitions:
         description: >-
           Whether content trust is enabled or not. If it is enabled, user cann't
           pull unsigned images from this project.
-      prevent_vulnerable_images_from_running:
+      prevent_vul:
         type: boolean
         description: Whether prevent the vulnerable images from running.
-      prevent_vulnerable_images_from_running_severity:
+      severity:
         type: string
         description: >-
           If the vulnerability is high than severity defined here, the images
           cann't be pulled.
-      automatically_scan_images_on_push:
+      auto_scan:
         type: boolean
         description: Whether scan images automatically when pushing.
   Manifest:
