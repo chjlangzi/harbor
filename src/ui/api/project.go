@@ -162,6 +162,11 @@ func (p *ProjectAPI) Post() {
 		}
 	}()
 
+	p.Ctx.ResponseWriter.WriteHeader(http.StatusCreated);
+	result := &idResult{projectID};
+	p.Data["json"] = result;
+	p.ServeJSON()
+
 	p.Redirect(http.StatusCreated, strconv.FormatInt(projectID, 10))
 }
 

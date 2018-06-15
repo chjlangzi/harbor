@@ -43,8 +43,8 @@ type passwordReq struct {
 	NewPassword string `json:"new_password"`
 }
 
-type addUserResult struct {
-	UserId int64 `json:"userId"`
+type idResult struct {
+	Id int64 `json:"id"`
 }
 
 // Prepare validates the URL and parms
@@ -252,7 +252,7 @@ func (ua *UserAPI) Post() {
 	}
 
 	ua.Ctx.ResponseWriter.WriteHeader(http.StatusCreated);
-	result := &addUserResult{userID};
+	result := &idResult{userID};
 	ua.Data["json"] = result;
 	ua.ServeJSON()
 
