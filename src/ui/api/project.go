@@ -564,18 +564,18 @@ func (p *ProjectAPI) ListByMember() {
 		}
 
 		log.Warningf("after validate")
-		//user,err = dao.GetUser(queryUser)
-		//
-		//if err != nil {
-		//	log.Errorf("get user by username error: %v", err)
-		//	p.CustomAbort(http.StatusInternalServerError, "Internal error.")
-		//}
-		//if user == nil {
-		//	log.Warning("user with username : %S not found!",username)
-		//	p.RenderError(http.StatusNotFound, "query user not found!")
-		//	return
-		//}
-		//log.Warningf("get user success")
+		user,err = dao.GetUser(queryUser)
+
+		if err != nil {
+			log.Errorf("get user by username error: %v", err)
+			p.CustomAbort(http.StatusInternalServerError, "Internal error.")
+		}
+		if user == nil {
+			log.Warning("user with username : %S not found!",username)
+			p.RenderError(http.StatusNotFound, "query user not found!")
+			return
+		}
+		log.Warningf("get user success")
 		projects, err = p.ProjectMgr.GetPublic()
 		if err != nil {
 			p.ParseAndHandleError("failed to get projects", err)
@@ -585,7 +585,7 @@ func (p *ProjectAPI) ListByMember() {
 		//取出projects
 		mys, mErr := dao.GetProjects(&models.ProjectQueryParam{
 			Member: &models.MemberQuery{
-				Name: user.Username,
+				Name: username,
 			},
 		})
 
