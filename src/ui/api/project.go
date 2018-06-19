@@ -542,39 +542,10 @@ func (p *ProjectAPI) ListByMember() {
 	}
 
 	if isAuthenticated && isSysAdmin {
-		username := p.GetStringFromPath(":username")
-		var user *models.User
+		members := p.GetStrings("members")
+		//var user *models.User
 		var projects []*models.Project
-		// query strings
-		page, size := p.GetPaginationParams()
-		query := &models.ProjectQueryParam{
-			Pagination: &models.Pagination{
-				Page: page,
-				Size: size,
-			},
-		}
 
-		log.Warningf("user is authenticate and isSystemAdmin")
-		queryUser := models.User{Username:username}
-		err := validateName(queryUser)
-		if err != nil {
-			log.Warningf("Bad request in Register: %v", err)
-			p.RenderError(http.StatusBadRequest, "register error:"+err.Error())
-			return
-		}
-
-		log.Warningf("after validate")
-		user,err = dao.GetUser(queryUser)
-
-		if err != nil {
-			log.Errorf("get user by username error: %v", err)
-			p.CustomAbort(http.StatusInternalServerError, "Internal error.")
-		}
-		if user == nil {
-			log.Warning("user with username : %S not found!",username)
-			p.RenderError(http.StatusNotFound, "query user not found!")
-			return
-		}
 		log.Warningf("get user success")
 		projects, err = p.ProjectMgr.GetPublic()
 		if err != nil {
@@ -582,49 +553,39 @@ func (p *ProjectAPI) ListByMember() {
 			return
 		}
 		log.Warningf("after get public projects")
-		//取出projects
-		mys, mErr := dao.GetProjects(&models.ProjectQueryParam{
-			Member: &models.MemberQuery{
-				Name: username,
-			},
-		})
-
-		if mErr != nil {
-			p.HandleInternalServerError(fmt.Sprintf(
-				"failed to get projects: %v", err))
-			return
-		}
-		log.Warningf("after get projects of user:%s",username)
 
 		exist := map[int64]bool{}
-		for _, p := range mys {
+		for _, p := range projects {
 			exist[p.ProjectID] = true
 		}
+		//取出 所有projects
+		var mys []*models.Project
+		var mErr error
+		for _, m := range members {
+			mys, mErr = dao.GetProjects(&models.ProjectQueryParam{
+				Member: &models.MemberQuery{
+					Name: m,
+				},
+			})
 
-		for _, p := range projects {
-			if !exist[p.ProjectID] {
-				mys = append(mys, p)
+			if mErr != nil {
+				p.HandleInternalServerError(fmt.Sprintf( "failed to get projects: %v", err))
+				return
+			}
+			log.Warningf("after get projects of user:%s",m)
+
+			for _, p := range mys {
+				if !exist[p.ProjectID] {
+					projects = append(projects, p)
+				}
 			}
 		}
 
-		projectIds := make([]int64, len(mys))
-		for i, p := range mys {
-			projectIds[i] = p.ProjectID
-		}
-		query.ProjectIDs = projectIds
-
-		result, err := p.ProjectMgr.List(query)
-		if err != nil {
-			p.ParseAndHandleError("failed to list projects", err)
-			return
-		}
-
-		for _, project := range result.Projects {
+		for _, project := range projects {
 			p.populateProperties(project)
 		}
 
-		p.SetPaginationHeader(result.Total, page, size)
-		p.Data["json"] = result.Projects
+		p.Data["json"] = projects
 		p.ServeJSON()
 	}else{
 		p.CustomAbort(http.StatusUnauthorized, "Unauthorized or login user is not admin!")
