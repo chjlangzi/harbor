@@ -523,7 +523,7 @@ func validateProjectReq(req *models.ProjectRequest) error {
 	return nil
 }
 
-// Get ...
+//  /api/projects/member/ Get ...
 func (p *ProjectAPI) ListByMember() {
 	isAuthenticated := p.SecurityCtx.IsAuthenticated()
 	isSysAdmin := p.SecurityCtx.IsSysAdmin()
@@ -591,17 +591,17 @@ func (p *ProjectAPI) ListByMember() {
 		log.Warningf("after get projects of user:%s",username)
 
 		exist := map[int64]bool{}
-		for _, p := range projects {
+		for _, p := range mys {
 			exist[p.ProjectID] = true
 		}
 
-		for _, p := range mys {
+		for _, p := range projects {
 			if !exist[p.ProjectID] {
-				projects = append(projects, p)
+				mys = append(mys, p)
 			}
 		}
 
-		result := &models.ProjectQueryResult{int64(len(projects)),projects};
+		result := &models.ProjectQueryResult{int64(len(mys)),mys};
 
 		for _, project := range result.Projects {
 			p.populateProperties(project)
@@ -614,4 +614,76 @@ func (p *ProjectAPI) ListByMember() {
 		p.CustomAbort(http.StatusUnauthorized, "Unauthorized or login user is not admin!")
 		return
 	}
+}
+
+//  /api/projects/member/ Get ...
+func (p *ProjectAPI) ListByMember2() {
+	// query strings
+	page, size := p.GetPaginationParams()
+	username := p.GetStringFromPath(":username")
+	query := &models.ProjectQueryParam{
+		Pagination: &models.Pagination{
+			Page: page,
+			Size: size,
+		},
+	}
+
+	// standalone, filter projects according to the privilleges of the user first
+	if !config.WithAdmiral() {
+		var projects []*models.Project
+		if !p.SecurityCtx.IsAuthenticated() {
+			// not login, only get public projects
+			pros, err := p.ProjectMgr.GetPublic()
+			if err != nil {
+				p.HandleInternalServerError(fmt.Sprintf("failed to get public projects: %v", err))
+				return
+			}
+			projects = []*models.Project{}
+			projects = append(projects, pros...)
+		} else {
+			if !(p.SecurityCtx.IsSysAdmin() || p.SecurityCtx.IsSolutionUser()) {
+				projects = []*models.Project{}
+				// login, but not system admin or solution user, get public projects and
+				// projects that the user is member of
+				pros, err := p.ProjectMgr.GetPublic()
+				if err != nil {
+					p.HandleInternalServerError(fmt.Sprintf("failed to get public projects: %v", err))
+					return
+				}
+				projects = append(projects, pros...)
+
+				mps, err := p.ProjectMgr.List(&models.ProjectQueryParam{
+					Member: &models.MemberQuery{
+						Name: username,
+					},
+				})
+				if err != nil {
+					p.HandleInternalServerError(fmt.Sprintf("failed to list projects: %v", err))
+					return
+				}
+				projects = append(projects, mps.Projects...)
+			}
+		}
+		if projects != nil {
+			projectIDs := []int64{}
+			for _, project := range projects {
+				projectIDs = append(projectIDs, project.ProjectID)
+			}
+			query.ProjectIDs = projectIDs
+		}
+	}
+
+	result, err := p.ProjectMgr.List(query)
+	if err != nil {
+		p.ParseAndHandleError("failed to list projects", err)
+		return
+	}
+
+	for _, project := range result.Projects {
+		p.populateProperties(project)
+	}
+
+	p.SetPaginationHeader(result.Total, page, size)
+	p.Data["json"] = result.Projects
+	p.ServeJSON()
 }
