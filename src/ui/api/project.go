@@ -545,19 +545,18 @@ func (p *ProjectAPI) ListByMember() {
 		members := p.GetStrings("members")
 		//var user *models.User
 		var projects []*models.Project
+		var pbProjects []*models.Project
 
 		log.Warningf("get user success")
-		projects, err = p.ProjectMgr.GetPublic()
+		pbProjects, err = p.ProjectMgr.GetPublic()
 		if err != nil {
-			p.ParseAndHandleError("failed to get projects", err)
+			p.ParseAndHandleError("failed to get pbProjects", err)
 			return
 		}
-		log.Warningf("after get public projects")
+		log.Warningf("after get public pbProjects")
 
 		exist := map[int64]bool{}
-		for _, p := range projects {
-			exist[p.ProjectID] = true
-		}
+
 		//取出 所有projects
 		var mys []*models.Project
 		var mErr error
@@ -582,6 +581,12 @@ func (p *ProjectAPI) ListByMember() {
 
 			for _, p := range projects {
 				exist[p.ProjectID] = true
+			}
+		}
+
+		for _, p := range pbProjects {
+			if !exist[p.ProjectID] {
+				projects = append(projects, p)
 			}
 		}
 
