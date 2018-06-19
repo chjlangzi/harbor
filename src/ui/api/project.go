@@ -547,6 +547,12 @@ func (p *ProjectAPI) ListByMember() {
 		var projects []*models.Project
 		// query strings
 		page, size := p.GetPaginationParams()
+		query := &models.ProjectQueryParam{
+			Pagination: &models.Pagination{
+				Page: page,
+				Size: size,
+			},
+		}
 
 		log.Warningf("user is authenticate and isSystemAdmin")
 		queryUser := models.User{Username:username}
@@ -558,18 +564,18 @@ func (p *ProjectAPI) ListByMember() {
 		}
 
 		log.Warningf("after validate")
-		user,err = dao.GetUser(queryUser)
-
-		if err != nil {
-			log.Errorf("get user by username error: %v", err)
-			p.CustomAbort(http.StatusInternalServerError, "Internal error.")
-		}
-		if user == nil {
-			log.Warning("user with username : %S not found!",username)
-			p.RenderError(http.StatusNotFound, "query user not found!")
-			return
-		}
-		log.Warningf("get user success")
+		//user,err = dao.GetUser(queryUser)
+		//
+		//if err != nil {
+		//	log.Errorf("get user by username error: %v", err)
+		//	p.CustomAbort(http.StatusInternalServerError, "Internal error.")
+		//}
+		//if user == nil {
+		//	log.Warning("user with username : %S not found!",username)
+		//	p.RenderError(http.StatusNotFound, "query user not found!")
+		//	return
+		//}
+		//log.Warningf("get user success")
 		projects, err = p.ProjectMgr.GetPublic()
 		if err != nil {
 			p.ParseAndHandleError("failed to get projects", err)
@@ -601,7 +607,17 @@ func (p *ProjectAPI) ListByMember() {
 			}
 		}
 
-		result := &models.ProjectQueryResult{int64(len(mys)),mys};
+		projectIds := make([]int64, len(mys))
+		for i, p := range mys {
+			projectIds[i] = p.ProjectID
+		}
+		query.ProjectIDs = projectIds
+
+		result, err := p.ProjectMgr.List(query)
+		if err != nil {
+			p.ParseAndHandleError("failed to list projects", err)
+			return
+		}
 
 		for _, project := range result.Projects {
 			p.populateProperties(project)
@@ -614,76 +630,4 @@ func (p *ProjectAPI) ListByMember() {
 		p.CustomAbort(http.StatusUnauthorized, "Unauthorized or login user is not admin!")
 		return
 	}
-}
-
-//  /api/projects/member/ Get ...
-func (p *ProjectAPI) ListByMember2() {
-	// query strings
-	page, size := p.GetPaginationParams()
-	username := p.GetStringFromPath(":username")
-	query := &models.ProjectQueryParam{
-		Pagination: &models.Pagination{
-			Page: page,
-			Size: size,
-		},
-	}
-
-	// standalone, filter projects according to the privilleges of the user first
-	if !config.WithAdmiral() {
-		var projects []*models.Project
-		if !p.SecurityCtx.IsAuthenticated() {
-			// not login, only get public projects
-			pros, err := p.ProjectMgr.GetPublic()
-			if err != nil {
-				p.HandleInternalServerError(fmt.Sprintf("failed to get public projects: %v", err))
-				return
-			}
-			projects = []*models.Project{}
-			projects = append(projects, pros...)
-		} else {
-			if !(p.SecurityCtx.IsSysAdmin() || p.SecurityCtx.IsSolutionUser()) {
-				projects = []*models.Project{}
-				// login, but not system admin or solution user, get public projects and
-				// projects that the user is member of
-				pros, err := p.ProjectMgr.GetPublic()
-				if err != nil {
-					p.HandleInternalServerError(fmt.Sprintf("failed to get public projects: %v", err))
-					return
-				}
-				projects = append(projects, pros...)
-
-				mps, err := p.ProjectMgr.List(&models.ProjectQueryParam{
-					Member: &models.MemberQuery{
-						Name: username,
-					},
-				})
-				if err != nil {
-					p.HandleInternalServerError(fmt.Sprintf("failed to list projects: %v", err))
-					return
-				}
-				projects = append(projects, mps.Projects...)
-			}
-		}
-		if projects != nil {
-			projectIDs := []int64{}
-			for _, project := range projects {
-				projectIDs = append(projectIDs, project.ProjectID)
-			}
-			query.ProjectIDs = projectIDs
-		}
-	}
-
-	result, err := p.ProjectMgr.List(query)
-	if err != nil {
-		p.ParseAndHandleError("failed to list projects", err)
-		return
-	}
-
-	for _, project := range result.Projects {
-		p.populateProperties(project)
-	}
-
-	p.SetPaginationHeader(result.Total, page, size)
-	p.Data["json"] = result.Projects
-	p.ServeJSON()
 }
