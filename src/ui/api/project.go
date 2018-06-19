@@ -579,6 +579,10 @@ func (p *ProjectAPI) ListByMember() {
 					projects = append(projects, p)
 				}
 			}
+
+			for _, p := range projects {
+				exist[p.ProjectID] = true
+			}
 		}
 
 		for _, project := range projects {
