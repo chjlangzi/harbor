@@ -522,3 +522,122 @@ func validateProjectReq(req *models.ProjectRequest) error {
 	req.Metadata = metas
 	return nil
 }
+
+// Get ...
+func (p *ProjectAPI) ListByMember() {
+	isAuthenticated := p.SecurityCtx.IsAuthenticated()
+	isSysAdmin := p.SecurityCtx.IsSysAdmin()
+
+	mode, err := config.AuthMode()
+	if err != nil {
+		log.Errorf("failed to get auth mode: %v", err)
+		p.CustomAbort(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+
+	if mode != common.DBAuth {
+		log.Errorf("auth mode need to be : db_auth ")
+		p.CustomAbort(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+
+	if isAuthenticated && isSysAdmin {
+		username := p.GetStringFromPath(":username")
+		var user *models.User
+		var projects []*models.Project
+		// query strings
+		page, size := p.GetPaginationParams()
+		query := &models.ProjectQueryParam{
+			Member: &models.MemberQuery{
+				Name: username,
+			},
+			Pagination: &models.Pagination{
+				Page: page,
+				Size: size,
+			},
+		}
+
+		log.Warningf("user is authenticate and isSystemAdmin")
+		queryUser := models.User{Username:username}
+		err := validateName(queryUser)
+		if err != nil {
+			log.Warningf("Bad request in Register: %v", err)
+			p.RenderError(http.StatusBadRequest, "register error:"+err.Error())
+			return
+		}
+
+		log.Warningf("after validate")
+		user,err = dao.GetUser(queryUser)
+
+		if err != nil {
+			log.Errorf("get user by username error: %v", err)
+			p.CustomAbort(http.StatusInternalServerError, "Internal error.")
+		}
+		if user == nil {
+			log.Warning("user with username : %S not found!",username)
+			p.RenderError(http.StatusNotFound, "query user not found!")
+			return
+		}
+		log.Warningf("get user success")
+		projects, err = p.ProjectMgr.GetPublic()
+		if err != nil {
+			p.ParseAndHandleError("failed to get projects", err)
+			return
+		}
+		log.Warningf("after get public projects")
+		//取出projects
+		mys, mErr := dao.GetProjects(&models.ProjectQueryParam{
+			Member: &models.MemberQuery{
+				Name: user.Username,
+			},
+		})
+
+		if mErr != nil {
+			p.HandleInternalServerError(fmt.Sprintf(
+				"failed to get projects: %v", err))
+			return
+		}
+		log.Warningf("after get projects of user:%s",username)
+
+		exist := map[int64]bool{}
+		for _, p := range projects {
+			exist[p.ProjectID] = true
+		}
+
+		for _, p := range mys {
+			if !exist[p.ProjectID] {
+				projects = append(projects, p)
+			}
+		}
+
+		projectIds := make([]int64, len(projects))
+		for i, p := range projects {
+			projectIds[i] = p.ProjectID
+		}
+
+		if projects != nil {
+			projectIDs := []int64{}
+			for _, project := range projects {
+				projectIDs = append(projectIDs, project.ProjectID)
+			}
+			query.ProjectIDs = projectIds
+		}
+
+		result, err := p.ProjectMgr.List(query)
+		if err != nil {
+			p.ParseAndHandleError("failed to list projects", err)
+			return
+		}
+
+		for _, project := range result.Projects {
+			p.populateProperties(project)
+		}
+
+		p.SetPaginationHeader(result.Total, page, size)
+		p.Data["json"] = result.Projects
+		p.ServeJSON()
+	}else{
+		p.CustomAbort(http.StatusUnauthorized, "Unauthorized or login user is not admin!")
+		return
+	}
+}
