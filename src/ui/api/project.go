@@ -547,15 +547,6 @@ func (p *ProjectAPI) ListByMember() {
 		var projects []*models.Project
 		// query strings
 		page, size := p.GetPaginationParams()
-		query := &models.ProjectQueryParam{
-			Member: &models.MemberQuery{
-				Name: username,
-			},
-			Pagination: &models.Pagination{
-				Page: page,
-				Size: size,
-			},
-		}
 
 		log.Warningf("user is authenticate and isSystemAdmin")
 		queryUser := models.User{Username:username}
@@ -610,24 +601,7 @@ func (p *ProjectAPI) ListByMember() {
 			}
 		}
 
-		projectIds := make([]int64, len(projects))
-		for i, p := range projects {
-			projectIds[i] = p.ProjectID
-		}
-
-		if projects != nil {
-			projectIDs := []int64{}
-			for _, project := range projects {
-				projectIDs = append(projectIDs, project.ProjectID)
-			}
-			query.ProjectIDs = projectIds
-		}
-
-		result, err := p.ProjectMgr.List(query)
-		if err != nil {
-			p.ParseAndHandleError("failed to list projects", err)
-			return
-		}
+		result := &models.ProjectQueryResult{int64(len(projects)),projects};
 
 		for _, project := range result.Projects {
 			p.populateProperties(project)
