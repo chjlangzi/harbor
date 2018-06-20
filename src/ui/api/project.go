@@ -591,6 +591,14 @@ func (p *ProjectAPI) ListByMember() {
 		}
 
 		for _, project := range projects {
+			meta, err := p.ProjectMgr.GetMetadataManager().Get(project.ProjectID)
+			if err == nil {
+				return
+			}
+			project.Metadata = meta
+		}
+
+		for _, project := range projects {
 			p.populateProperties(project)
 		}
 
