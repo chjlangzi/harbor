@@ -43,10 +43,6 @@ type passwordReq struct {
 	NewPassword string `json:"new_password"`
 }
 
-type adminPasswordReq struct {
-	NewPassword string `json:"new_password"`
-}
-
 type idResult struct {
 	Id int64 `json:"id"`
 }
@@ -406,46 +402,4 @@ func isContainIllegalChar(s string, illegalChar []string) bool {
 		}
 	}
 	return false
-}
-
-//admin ChangePassword handles PUT to /api/users/admin/{}/password
-func (ua *UserAPI) AdminChangePassword() {
-	if !ua.modifiable() {
-		ua.RenderError(http.StatusForbidden, fmt.Sprintf("User with ID: %d is not modifiable", ua.userID))
-		return
-	}
-
-	isAuthenticated := ua.SecurityCtx.IsAuthenticated()
-	isSysAdmin := ua.SecurityCtx.IsSysAdmin()
-
-	if isAuthenticated && isSysAdmin {
-		var req adminPasswordReq
-		ua.DecodeJSONReq(&req)
-
-		queryUser := models.User{UserID: ua.userID}
-		user,err := dao.GetUser(queryUser)
-		if err != nil {
-			log.Errorf("Error occurred in CheckUser: %v", err)
-			ua.CustomAbort(http.StatusInternalServerError, "Internal error.")
-		}
-		if user == nil {
-			log.Warning("user not found")
-			ua.CustomAbort(http.StatusForbidden, "user not found")
-		}
-
-		if req.NewPassword == "" {
-			ua.CustomAbort(http.StatusBadRequest, "please_input_new_password")
-		}
-		updateUser := models.User{UserID: ua.userID, Password: req.NewPassword, Salt: user.Salt}
-		err = dao.ChangeUserPassword(updateUser, "")
-		if err != nil {
-			log.Errorf("Error occurred in ChangeUserPassword: %v", err)
-			ua.CustomAbort(http.StatusInternalServerError, "Internal error.")
-		}
-	}else{
-		ua.CustomAbort(http.StatusUnauthorized, "Unauthorized or login user is not admin!")
-		return
-	}
-
-
 }
