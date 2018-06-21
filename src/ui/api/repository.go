@@ -123,10 +123,17 @@ func (ra *RepositoryAPI) Get() {
 		return
 	}
 
+	sr,error:=ra.GetBool("sr",true)
+	if error != nil{
+		ra.ParseAndHandleError(fmt.Sprintf("sort reserve error of project %d", projectID), err)
+		return
+	}
+
 	query := &models.RepositoryQuery{
 		ProjectIDs: []int64{projectID},
 		Name:       ra.GetString("q"),
 		LabelID:    labelID,
+		SortReserve: sr,
 	}
 	query.Page, query.Size = ra.GetPaginationParams()
 

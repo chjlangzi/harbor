@@ -194,6 +194,30 @@ paths:
           $ref: '#/responses/UnsupportedMediaType'
         '500':
           description: Unexpected internal errors.
+  /projects/member:
+      get:
+        summary: List projects by members
+        description: >
+          This endpoint returns all projects filtered by members
+        parameters:
+          - name: members
+            in: query
+            description: The member of project.
+            required: false
+            type: array
+        tags:
+          - Products
+        responses:
+          '200':
+            description: Return all matched projects.
+            schema:
+              type: array
+              items:
+                $ref: '#/definitions/Project'
+          '401':
+            description: User need to log in first.
+          '500':
+            description: Internal errors.
   '/projects/{project_id}':
     get:
       summary: Return specific project detail infomation
@@ -958,6 +982,11 @@ paths:
           format: int32
           required: false
           description: 'The size of per page, default is 10, maximum is 100.'
+        - name: sr
+          in: query
+          type: boolean
+          required: false
+          description: for order type ,true for update_time asc,false update_time for desc.
       tags:
         - Products
       responses:

@@ -119,9 +119,16 @@ func GetRepositories(query ...*models.RepositoryQuery) ([]*models.RepoRecord, er
 
 	sql, params := repositoryQueryConditions(query...)
 	sql = `select r.repository_id, r.name, r.project_id, r.description, r.pull_count, 
-	r.star_count, r.creation_time, r.update_time ` + sql + `order by r.name `
+	r.star_count, r.creation_time, r.update_time ` + sql + `order by r.update_time `
 	if len(query) > 0 && query[0] != nil {
-		page, size := query[0].Page, query[0].Size
+		q := query[0]
+		if(q.SortReserve){
+			sql += ` asc `
+		}else{
+			sql += ` desc `
+		}
+
+		page, size := q.Page, q.Size
 		if size > 0 {
 			sql += `limit ? `
 			params = append(params, size)

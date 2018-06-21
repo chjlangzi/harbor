@@ -54,4 +54,5 @@ type RepositoryQuery struct {
 	ProjectName string
 	LabelID     int64
 	Pagination
+	SortReserve bool
 }
