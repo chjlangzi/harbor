@@ -29,6 +29,7 @@ import (
 
 	"strconv"
 	"time"
+	"strings"
 )
 
 type deletableResp struct {
@@ -542,7 +543,7 @@ func (p *ProjectAPI) ListByMember() {
 	}
 
 	if isAuthenticated && isSysAdmin {
-		members := p.GetStrings("members")
+		members := p.GetString("members")
 		//var user *models.User
 		var projects []*models.Project
 		var pbProjects []*models.Project
@@ -557,30 +558,34 @@ func (p *ProjectAPI) ListByMember() {
 
 		exist := map[int64]bool{}
 
-		//取出 所有projects
-		var mys []*models.Project
-		var mErr error
-		for _, m := range members {
-			mys, mErr = dao.GetProjects(&models.ProjectQueryParam{
-				Member: &models.MemberQuery{
-					Name: m,
-				},
-			})
+		if(len(members) > 0){
+			sepMems := strings.Split(members,",")
 
-			if mErr != nil {
-				p.HandleInternalServerError(fmt.Sprintf( "failed to get projects: %v", err))
-				return
-			}
-			log.Warningf("after get projects of user:%s",m)
+			//取出 所有projects
+			var mys []*models.Project
+			var mErr error
+			for _, m := range sepMems {
+				mys, mErr = dao.GetProjects(&models.ProjectQueryParam{
+					Member: &models.MemberQuery{
+						Name: m,
+					},
+				})
 
-			for _, p := range mys {
-				if !exist[p.ProjectID] {
-					projects = append(projects, p)
+				if mErr != nil {
+					p.HandleInternalServerError(fmt.Sprintf( "failed to get projects: %v", err))
+					return
 				}
-			}
+				log.Warningf("after get projects of user:%s",m)
 
-			for _, p := range projects {
-				exist[p.ProjectID] = true
+				for _, p := range mys {
+					if !exist[p.ProjectID] {
+						projects = append(projects, p)
+					}
+				}
+
+				for _, p := range projects {
+					exist[p.ProjectID] = true
+				}
 			}
 		}
 
