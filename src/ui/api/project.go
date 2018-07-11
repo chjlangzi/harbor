@@ -565,26 +565,28 @@ func (p *ProjectAPI) ListByMember() {
 			var mys []*models.Project
 			var mErr error
 			for _, m := range sepMems {
-				mys, mErr = dao.GetProjects(&models.ProjectQueryParam{
-					Member: &models.MemberQuery{
-						Name: m,
-					},
-				})
+				if strings.TrimSpace(m) != ""{
+					mys, mErr = dao.GetProjects(&models.ProjectQueryParam{
+						Member: &models.MemberQuery{
+							Name: m,
+						},
+					})
 
-				if mErr != nil {
-					p.HandleInternalServerError(fmt.Sprintf( "failed to get projects: %v", err))
-					return
-				}
-				log.Warningf("after get projects of user:%s",m)
-
-				for _, p := range mys {
-					if !exist[p.ProjectID] {
-						projects = append(projects, p)
+					if mErr != nil {
+						p.HandleInternalServerError(fmt.Sprintf( "failed to get projects: %v", err))
+						return
 					}
-				}
+					log.Warningf("after get projects of user:%s",m)
 
-				for _, p := range projects {
-					exist[p.ProjectID] = true
+					for _, p := range mys {
+						if !exist[p.ProjectID] {
+							projects = append(projects, p)
+						}
+					}
+
+					for _, p := range projects {
+						exist[p.ProjectID] = true
+					}
 				}
 			}
 		}
