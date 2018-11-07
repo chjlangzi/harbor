@@ -1,4 +1,4 @@
-# Copyright 2016-2017 VMware, Inc. All Rights Reserved.
+# Copyright Project Harbor Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,22 +21,17 @@ ${SSH_USER}  root
 
 *** Keywords ***
 Nightly Test Setup
-    [Arguments]  ${ip}  ${SSH_PWD}  ${HARBOR_PASSWORD}  ${ip1}==${EMPTY}
-    Run Keyword  CA setup  ${ip}  ${SSH_PWD}  ${HARBOR_PASSWORD}
-    Run Keyword  Prepare Docker Cert  ${ip}    
-    Run Keyword If  '${ip1}' != '${EMPTY}'  Run  rm harbor_ca.crt 
-    Run Keyword If  '${ip1}' != '${EMPTY}'  CA setup  ${ip1}  ${SSH_PWD}  ${HARBOR_PASSWORD}
-    Run Keyword If  '${ip1}' != '${EMPTY}'  Prepare Docker Cert  ${ip1}
+    [Arguments]  ${ip}  ${HARBOR_PASSWORD}  ${ip1}==${EMPTY}
+    Run Keyword If  '${ip1}' != '${EMPTY}'  CA setup  ${ip1}  ${HARBOR_PASSWORD}  /ca/ca1.crt
+    Run Keyword If  '${ip1}' != '${EMPTY}'  Run  rm -rf ./harbor_ca.crt
+    Run Keyword  CA setup  ${ip}  ${HARBOR_PASSWORD}
     Run Keyword  Start Docker Daemon Locally
 
 CA Setup
-    [Arguments]  ${ip}  ${SSH_PWD}  ${HARBOR_PASSWORD}
-    Open Connection    ${ip}
-    Login    ${SSH_USER}    ${SSH_PWD}
-    SSHLibrary.Get File  /data/ca_download/ca.crt
-    Close All Connections
-    Run  mv ca.crt harbor_ca.crt
-    Generate Certificate Authority For Chrome  ${HARBOR_PASSWORD}	
+    [Arguments]  ${ip}  ${HARBOR_PASSWORD}  ${cert}=/ca/ca.crt
+    Run  mv ${cert} harbor_ca.crt
+    Generate Certificate Authority For Chrome  ${HARBOR_PASSWORD}
+    Prepare Docker Cert  ${ip}	
 
 Collect Nightly Logs
     [Arguments]  ${ip}  ${SSH_PWD}  ${ip1}==${EMPTY}

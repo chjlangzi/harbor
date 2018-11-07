@@ -1,4 +1,4 @@
-# Copyright 2016-2017 VMware, Inc. All Rights Reserved.
+# Copyright Project Harbor Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ Create A New Endpoint
     Input Text  xpath=${destination_password_xpath}  ${pwd}
     #cancel verify cert since we use a selfsigned cert
     Click Element  ${destination_insecure_xpath}
-    Run Keyword If  '${save}' == 'Y'  Run keyword  Click Element  ${replicaton_save_xpath}
+    Run Keyword If  '${save}' == 'Y'  Run keyword  Click Element  ${replication_save_xpath}
     Run Keyword If  '${save}' == 'N'  No Operation
 
 Create A Rule With Existing Endpoint
@@ -142,9 +142,12 @@ Trigger Replication Manual
     Click Element  //clr-dg-row[contains(.,'${rule}')]//label
     Click Element  ${action_bar_replicate}
     Wait Until Page Contains Element  ${dialog_replicate}
-    Click Element  ${dialog_replicate}
-    Wait Until Page Contains  successfully
-    Click Element  ${dialog_close}
+    #change from click to mouse down and up 
+    Mouse Down  ${dialog_replicate}
+    Mouse Up  ${dialog_replicate}
+    Sleep  2
+    Wait Until Page Contains Element  //clr-tab-content//div[contains(.,'${rule}')]/../div/clr-icon[@shape="success-standard"]
+    Sleep  1
 
 Rename Rule
     [Arguments]  ${rule}  ${newname}
@@ -164,9 +167,10 @@ Delete Rule
     Click Element  //clr-dg-row[contains(.,'${rule}')]//label
     Click Element  ${action_bar_delete}
     Wait Until Page Contains Element  ${dialog_delete}
-    Click Element  ${dialog_delete}
-    Wait Until Page Contains Element  ${dialog_close}
-    Click Element  ${dialog_close}
+    #change from click to mouse down and up
+    Mouse Down  ${dialog_delete}
+    Mouse Up  ${dialog_delete}
+    Sleep  2
 
 Filter Rule
     [Arguments]  ${rule} 
@@ -186,10 +190,7 @@ View Job Log
     [arguments]  ${job}
     Click Element  ${job_filter_search}
     Input Text  ${job_filter_input}  ${job}
-    Click Element  //clr-dg-row[contains(.,'${job}')]//a
-    Wait Until Page Contains  View Replication Job Log
-    Click Element  ${dialog_close}
-    Sleep  1
+    Click Link  //clr-dg-row[contains(.,'${job}')]//a
 
 Rename Endpoint
     [arguments]  ${name}  ${newname}
@@ -198,7 +199,7 @@ Rename Endpoint
     Click Element  ${action_bar_edit}
     Wait Until Page Contains Element  ${destination_name_xpath}
     Input Text  ${destination_name_xpath}  ${newname}
-    Click Element  ${replicaton_save_xpath}
+    Click Element  ${replication_save_xpath}
 
 Delete Endpoint
     [Arguments]  ${name}
@@ -211,6 +212,3 @@ Delete Endpoint
     Click Element  ${action_bar_delete}
     Wait Until Page Contains Element  ${dialog_delete}
     Click Element  ${dialog_delete}
-    Wait Until Page Contains  success
-    Click Element  ${dialog_close}
-

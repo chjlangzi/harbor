@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,9 @@
 package dao
 
 import (
-	"github.com/vmware/harbor/src/common"
-	"github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/common"
+	"github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/common/utils/log"
 
 	"fmt"
 	"time"
@@ -111,6 +111,12 @@ func GetProjectByName(name string) (*models.Project, error) {
 	}
 
 	return &p[0], nil
+}
+
+// ProjectExistsByName returns whether the project exists according to its name.
+func ProjectExistsByName(name string) bool {
+	o := GetOrmer()
+	return o.QueryTable("project").Filter("name", name).Exist()
 }
 
 // GetTotalOfProjects returns the total count of projects
@@ -292,8 +298,10 @@ func GetRolesByLDAPGroup(projectID int64, groupDNCondition string) ([]int, error
 		return roles, nil
 	}
 	o := GetOrmer()
+	// Because an LDAP user can be memberof multiple groups,
+	// the role is in descent order (1-admin, 2-developer, 3-guest), use min to select the max privilege role.
 	sql := fmt.Sprintf(
-		`select pm.role from project_member pm 
+		`select min(pm.role) from project_member pm 
 		left join user_group ug on pm.entity_type = 'g' and pm.entity_id = ug.id 
 		where ug.ldap_group_dn in ( %s ) and pm.project_id = ? `,
 		groupDNCondition)
@@ -301,6 +309,10 @@ func GetRolesByLDAPGroup(projectID int64, groupDNCondition string) ([]int, error
 	if _, err := o.Raw(sql, projectID).QueryRows(&roles); err != nil {
 		log.Warningf("Error in GetRolesByLDAPGroup, error: %v", err)
 		return nil, err
+	}
+	// If there is no row selected, the min returns an empty row, to avoid return 0 as role
+	if len(roles) == 1 && roles[0] == 0 {
+		return []int{}, nil
 	}
 	return roles, nil
 }

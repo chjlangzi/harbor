@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@ package source
 import (
 	"strings"
 
-	"github.com/vmware/harbor/src/common/utils/log"
-	"github.com/vmware/harbor/src/replication"
-	"github.com/vmware/harbor/src/replication/models"
+	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/replication"
+	"github.com/goharbor/harbor/src/replication/models"
 )
 
 // TagCombinationFilter implements Filter interface for merging tag filter items
@@ -36,8 +36,8 @@ func (t *TagCombinationFilter) Init() error {
 	return nil
 }
 
-// GetConvertor returns the convertor
-func (t *TagCombinationFilter) GetConvertor() Convertor {
+// GetConverter returns the converter
+func (t *TagCombinationFilter) GetConverter() Converter {
 	return nil
 }
 

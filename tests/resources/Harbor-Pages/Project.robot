@@ -1,4 +1,4 @@
-# Copyright 2016-2017 VMware, Inc. All Rights Reserved.
+# Copyright Project Harbor Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,8 +31,10 @@ Create An New Project
     Run Keyword If  '${public}' == 'true'  Click Element  xpath=${project_public_xpath}
     Click Element  xpath=//button[contains(.,'OK')]
     Sleep  4
-    Wait Until Page Contains  ${projectname}
-    Wait Until Page Contains  Project Admin
+    ${rc}  ${output}=  Run And Return Rc And Output  curl -u ${HARBOR_ADMIN}:${HARBOR_PASSWORD} -k -X GET --header 'Accept: application/json' ${HARBOR_URL}/api/projects?name=${projectname}
+    Log  ${output}
+    Should Be Equal As Integers  ${rc}  0
+    Should Contain  ${output}  ${projectname}
 
 Create An New Project With New User
     [Arguments]  ${url}  ${username}  ${email}  ${realname}  ${newPassword}  ${comment}  ${projectname}  ${public}
@@ -82,9 +84,12 @@ Make Project Private
     Go Into Project  ${project name}    
     Sleep  1
     Click Element  xpath=//project-detail//a[contains(.,'Configuration')]
+    Sleep  1
     Checkbox Should Be Selected  xpath=//input[@name='public']
     Click Element  //clr-checkbox[@name='public']//label
+    Wait Until Element Is Enabled  //button[contains(.,'SAVE')]
     Click Element  //button[contains(.,'SAVE')]
+    Wait Until Page Contains  Configuration has been successfully saved
 
 Make Project Public
     [Arguments]  ${projectname}
@@ -93,26 +98,25 @@ Make Project Public
     Click Element  xpath=//project-detail//a[contains(.,'Configuration')]
     Checkbox Should Not Be Selected  xpath=//input[@name='public']
     Click Element  //clr-checkbox[@name='public']//label
+    Wait Until Element Is Enabled  //button[contains(.,'SAVE')]
     Click Element  //button[contains(.,'SAVE')]
+    Wait Until Page Contains  Configuration has been successfully saved
 
 Delete Repo
     [Arguments]  ${projectname}
     Click Element  xpath=//clr-dg-row[contains(.,"${projectname}")]//clr-checkbox//label
-    Sleep  1
+    Wait Until Element Is Enabled  //button[contains(.,"Delete")]
     Click Element  xpath=//button[contains(.,"Delete")]
-    Sleep  1
+    Wait Until Element Is Visible  //clr-modal//button[2]
     Click Element  xpath=//clr-modal//button[2]
-    Sleep  1
-    Click Element  xpath=//button[contains(.,"CLOSE")]
 
 Delete Repo on CardView
     [Arguments]  ${reponame}
-    Click Element  xpath=//hbr-gridview//span[contains(.,'${reponame}')]//clr-dropdown/button
-    Sleep  1
-    Click Element  xpath=//hbr-gridview//span[contains(.,'${reponame}')]//clr-dropdown/clr-dropdown-menu/button[contains(.,'Delete')]
-    Sleep  1
+    Click Element  //hbr-gridview//span[contains(.,'${reponame}')]//clr-dropdown/button
+    Wait Until Element Is Visible  //hbr-gridview//span[contains(.,'${reponame}')]//clr-dropdown/clr-dropdown-menu/button[contains(.,'Delete')]
+    Click Element  //hbr-gridview//span[contains(.,'${reponame}')]//clr-dropdown/clr-dropdown-menu/button[contains(.,'Delete')]
+    Wait Until Element Is Visible  //clr-modal//button[contains(.,'DELETE')]
     Click Element  //clr-modal//button[contains(.,'DELETE')]
-    Sleep  3
 
 Delete Project
     [Arguments]  ${projectname}
@@ -121,21 +125,20 @@ Delete Project
     Sleep  1
     Click Element  xpath=//button[contains(.,"Delete")]
     Sleep  2
-    Click Element  xpath=//clr-modal//button[2]
+    Click Element  //clr-modal//button[contains(.,'DELETE')]
     Sleep  1
-    Click Element  xpath=//button[contains(.,"CLOSE")]
 
 Project Should Not Be Deleted
     [Arguments]  ${projname}
     Delete Project  ${projname}
     Sleep  1
-    Page Should Contain  ${projname}
+    Page Should Contain Element  //clr-tab-content//div[contains(.,'${projname}')]/../div/clr-icon[@shape="error-standard"]
 
 Project Should Be Deleted
     [Arguments]  ${projname}
     Delete Project  ${projname}
     Sleep  2
-    Page Should Not Contain  ${projname}
+    Page Should Contain Element  //clr-tab-content//div[contains(.,'${projname}')]/../div/clr-icon[@shape="success-standard"]
 
 Advanced Search Should Display
     Page Should Contain Element  xpath=//audit-log//div[@class="flex-xs-middle"]/button

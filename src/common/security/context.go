@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 package security
 
 import (
-	"github.com/vmware/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/common/models"
 )
 
 // Context abstracts the operations related with authN and authZ
@@ -34,8 +34,8 @@ type Context interface {
 	HasWritePerm(projectIDOrName interface{}) bool
 	// HasAllPerm returns whether the user has all permissions to the project
 	HasAllPerm(projectIDOrName interface{}) bool
-	//Get current user's all project
+	// Get current user's all project
 	GetMyProjects() ([]*models.Project, error)
-	//Get user's role in provided project
+	// Get user's role in provided project
 	GetProjectRoles(projectIDOrName interface{}) []int
 }

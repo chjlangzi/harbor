@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,13 +27,14 @@ type Project struct {
 	ProjectID    int64             `orm:"pk;auto;column(project_id)" json:"project_id"`
 	OwnerID      int               `orm:"column(owner_id)" json:"owner_id"`
 	Name         string            `orm:"column(name)" json:"name"`
-	CreationTime time.Time         `orm:"column(creation_time)" json:"creation_time"`
-	UpdateTime   time.Time         `orm:"column(update_time)" json:"update_time"`
+	CreationTime time.Time         `orm:"column(creation_time);auto_now_add" json:"creation_time"`
+	UpdateTime   time.Time         `orm:"column(update_time);auto_now" json:"update_time"`
 	Deleted      bool              `orm:"column(deleted)" json:"deleted"`
 	OwnerName    string            `orm:"-" json:"owner_name"`
 	Togglable    bool              `orm:"-" json:"togglable"`
 	Role         int               `orm:"-" json:"current_user_role_id"`
 	RepoCount    int64             `orm:"-" json:"repo_count"`
+	ChartCount   uint64            `orm:"-" json:"chart_count"`
 	Metadata     map[string]string `orm:"-" json:"metadata"`
 }
 
@@ -105,26 +106,6 @@ func isTrue(value string) bool {
 		strings.ToLower(value) == "1"
 }
 
-// ProjectSorter holds an array of projects
-type ProjectSorter struct {
-	Projects []*Project
-}
-
-// Len returns the length of array in ProjectSorter
-func (ps *ProjectSorter) Len() int {
-	return len(ps.Projects)
-}
-
-// Less defines the comparison rules of project
-func (ps *ProjectSorter) Less(i, j int) bool {
-	return ps.Projects[i].Name < ps.Projects[j].Name
-}
-
-// Swap swaps the position of i and j
-func (ps *ProjectSorter) Swap(i, j int) {
-	ps.Projects[i], ps.Projects[j] = ps.Projects[j], ps.Projects[i]
-}
-
 // ProjectQueryParam can be used to set query parameters when listing projects.
 // The query condition will be set in the query if its corresponding field
 // is not nil. Leave it empty if you don't want to apply this condition.
@@ -135,7 +116,7 @@ func (ps *ProjectSorter) Swap(i, j int) {
 // List projects the owner of which is user1: query := &QueryParam{Owner:"user1"}
 // List all public projects the owner of which is user1: query := &QueryParam{Owner:"user1",Public:true}
 // List projects which user1 is member of: query := &QueryParam{Member:&Member{Name:"user1"}}
-// List projects which user1 is the project admin : query := &QueryParam{Memeber:&Member{Name:"user1",Role:1}}
+// List projects which user1 is the project admin : query := &QueryParam{Member:&Member{Name:"user1",Role:1}}
 type ProjectQueryParam struct {
 	Name       string       // the name of project
 	Owner      string       // the username of project owner
@@ -145,7 +126,7 @@ type ProjectQueryParam struct {
 	ProjectIDs []int64      // project ID list
 }
 
-// MemberQuery fitler by member's username and role
+// MemberQuery filter by member's username and role
 type MemberQuery struct {
 	Name      string       // the username of member
 	Role      int          // the role of the member has to the project
@@ -156,6 +137,11 @@ type MemberQuery struct {
 type Pagination struct {
 	Page int64
 	Size int64
+}
+
+// Sorting sort by given field, ascending or descending
+type Sorting struct {
+	Sort string // in format [+-]?<FIELD_NAME>, e.g. '+creation_time', '-creation_time'
 }
 
 // BaseProjectCollection contains the query conditions which can be used
@@ -169,7 +155,7 @@ type BaseProjectCollection struct {
 // ProjectRequest holds informations that need for creating project API
 type ProjectRequest struct {
 	Name     string            `json:"project_name"`
-	Public   *int              `json:"public"` //deprecated, reserved for project creation in replication
+	Public   *int              `json:"public"` // deprecated, reserved for project creation in replication
 	Metadata map[string]string `json:"metadata"`
 }
 
@@ -179,7 +165,7 @@ type ProjectQueryResult struct {
 	Projects []*Project
 }
 
-//TableName is required by beego orm to map Project to table project
+// TableName is required by beego orm to map Project to table project
 func (p *Project) TableName() string {
 	return ProjectTable
 }

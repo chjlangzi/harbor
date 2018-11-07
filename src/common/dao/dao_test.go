@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,17 +15,18 @@
 package dao
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/astaxie/beego/orm"
+	"github.com/goharbor/harbor/src/common"
+	"github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/common/utils"
+	"github.com/goharbor/harbor/src/common/utils/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vmware/harbor/src/common"
-	"github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/common/utils"
-	"github.com/vmware/harbor/src/common/utils/log"
 )
 
 func execUpdate(o orm.Ormer, sql string, params ...interface{}) error {
@@ -187,7 +188,7 @@ func TestRegister(t *testing.T) {
 		t.Errorf("Error occurred in Register: %v", err)
 	}
 
-	//Check if user registered successfully.
+	// Check if user registered successfully.
 	queryUser := models.User{
 		Username: username,
 	}
@@ -201,41 +202,6 @@ func TestRegister(t *testing.T) {
 	}
 	if newUser.Email != "tester01@vmware.com" {
 		t.Errorf("Email does not match, expected: %s, actual: %s", "tester01@vmware.com", newUser.Email)
-	}
-}
-
-func TestCheckUserPassword(t *testing.T) {
-	nonExistUser := models.User{
-		Username: "non-exist",
-	}
-	correctUser := models.User{
-		Username: username,
-		Password: password,
-	}
-	wrongPwd := models.User{
-		Username: username,
-		Password: "wrong",
-	}
-	u, err := CheckUserPassword(nonExistUser)
-	if err != nil {
-		t.Errorf("Failed in CheckUserPassword: %v", err)
-	}
-	if u != nil {
-		t.Errorf("Expected nil for Non exist user, but actual: %+v", u)
-	}
-	u, err = CheckUserPassword(wrongPwd)
-	if err != nil {
-		t.Errorf("Failed in CheckUserPassword: %v", err)
-	}
-	if u != nil {
-		t.Errorf("Expected nil for user with wrong password, but actual: %+v", u)
-	}
-	u, err = CheckUserPassword(correctUser)
-	if err != nil {
-		t.Errorf("Failed in CheckUserPassword: %v", err)
-	}
-	if u == nil {
-		t.Errorf("User should not be nil for correct user")
 	}
 }
 
@@ -397,42 +363,6 @@ func TestChangeUserPassword(t *testing.T) {
 		t.Errorf("The username returned by Login does not match, expected: %s, acutal: %s", username, loginedUser.Username)
 	}
 }
-
-func TestChangeUserPasswordWithOldPassword(t *testing.T) {
-	user := models.User{UserID: currentUser.UserID}
-	query, err := GetUser(user)
-	if err != nil {
-		t.Errorf("Error occurred when get user salt")
-	}
-	currentUser.Salt = query.Salt
-
-	err = ChangeUserPassword(models.User{UserID: currentUser.UserID, Password: "NewerHarborTester12345", Salt: currentUser.Salt}, "NewHarborTester12345")
-	if err != nil {
-		t.Errorf("Error occurred in ChangeUserPassword: %v", err)
-	}
-	loginedUser, err := LoginByDb(models.AuthModel{Principal: currentUser.Username, Password: "NewerHarborTester12345"})
-	if err != nil {
-		t.Errorf("Error occurred in LoginByDb: %v", err)
-	}
-	if loginedUser.Username != username {
-		t.Errorf("The username returned by Login does not match, expected: %s, acutal: %s", username, loginedUser.Username)
-	}
-}
-
-func TestChangeUserPasswordWithIncorrectOldPassword(t *testing.T) {
-	err := ChangeUserPassword(models.User{UserID: currentUser.UserID, Password: "NNewerHarborTester12345", Salt: currentUser.Salt}, "WrongNewerHarborTester12345")
-	if err == nil {
-		t.Errorf("Error does not occurred due to old password is incorrect.")
-	}
-	loginedUser, err := LoginByDb(models.AuthModel{Principal: currentUser.Username, Password: "NNewerHarborTester12345"})
-	if err != nil {
-		t.Errorf("Error occurred in LoginByDb: %v", err)
-	}
-	if loginedUser != nil {
-		t.Errorf("The login user is not nil, acutal: %+v", loginedUser)
-	}
-}
-
 func TestAddProject(t *testing.T) {
 
 	project := models.Project{
@@ -638,7 +568,7 @@ func TestGetUserProjectRoles(t *testing.T) {
 		t.Errorf("Error happened in GetUserProjectRole: %v, userID: %+v, project Id: %d", err, currentUser.UserID, currentProject.ProjectID)
 	}
 
-	//Get the size of current user project role.
+	// Get the size of current user project role.
 	if len(r) != 1 {
 		t.Errorf("The user, id: %d, should only have one role in project, id: %d, but actual: %d", currentUser.UserID, currentProject.ProjectID, len(r))
 	}
@@ -746,7 +676,7 @@ func TestAddRepTarget(t *testing.T) {
 		Username: "admin",
 		Password: "admin",
 	}
-	//_, err := AddRepTarget(target)
+	// _, err := AddRepTarget(target)
 	id, err := AddRepTarget(target)
 	t.Logf("added target, id: %d", id)
 	if err != nil {
@@ -1382,7 +1312,7 @@ func TestImgScanOverview(t *testing.T) {
 	comp := &models.ComponentsOverview{
 		Total: 2,
 		Summary: []*models.ComponentsOverviewEntry{
-			&models.ComponentsOverviewEntry{
+			{
 				Sev:   int(models.SevMedium),
 				Count: 2,
 			},
@@ -1557,5 +1487,9 @@ func TestSaveConfigEntries(t *testing.T) {
 	if findItem != 3 {
 		t.Fatalf("Should update 3 configuration but only update %d", findItem)
 	}
+}
 
+func TestIsDupRecError(t *testing.T) {
+	assert.True(t, isDupRecErr(fmt.Errorf("pq: duplicate key value violates unique constraint \"properties_k_key\"")))
+	assert.False(t, isDupRecErr(fmt.Errorf("other error")))
 }

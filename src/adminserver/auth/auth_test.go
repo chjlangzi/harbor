@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@ import (
 	"net/http"
 	"testing"
 
+	commonsecret "github.com/goharbor/harbor/src/common/secret"
 	"github.com/stretchr/testify/assert"
-	commonsecret "github.com/vmware/harbor/src/common/secret"
 )
 
 func TestAuthenticate(t *testing.T) {

@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,10 +18,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/vmware/harbor/src/adminserver/handlers"
-	syscfg "github.com/vmware/harbor/src/adminserver/systemcfg"
-	sysinfo "github.com/vmware/harbor/src/adminserver/systeminfo"
-	"github.com/vmware/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/adminserver/handlers"
+	syscfg "github.com/goharbor/harbor/src/adminserver/systemcfg"
+	"github.com/goharbor/harbor/src/common/utils/log"
 )
 
 // Server for admin component
@@ -46,8 +45,6 @@ func main() {
 		log.Fatalf("failed to initialize the system: %v", err)
 	}
 	log.Info("system initialization completed")
-
-	sysinfo.Init()
 
 	port := os.Getenv("PORT")
 	if len(port) == 0 {

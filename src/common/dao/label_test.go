@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@ package dao
 import (
 	"testing"
 
-	"github.com/vmware/harbor/src/common"
-	"github.com/vmware/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/common"
+	"github.com/goharbor/harbor/src/common/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -72,7 +72,7 @@ func TestMethodsOfLabel(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, int64(1), total)
 
-	// list
+	// list: exact match
 	labels, err := ListLabels(&models.LabelQuery{
 		Scope:     common.LabelScopeProject,
 		ProjectID: 1,
@@ -81,11 +81,21 @@ func TestMethodsOfLabel(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, 1, len(labels))
 
-	// list
+	// list: fuzzy match
+	labels, err = ListLabels(&models.LabelQuery{
+		Scope:          common.LabelScopeProject,
+		ProjectID:      1,
+		Name:           label.Name[:1],
+		FuzzyMatchName: true,
+	})
+	require.Nil(t, err)
+	assert.Equal(t, 1, len(labels))
+
+	// list: not exist
 	labels, err = ListLabels(&models.LabelQuery{
 		Scope:     common.LabelScopeProject,
 		ProjectID: 1,
-		Name:      "not_exist_label",
+		Name:      label.Name[:1],
 	})
 	require.Nil(t, err)
 	assert.Equal(t, 0, len(labels))
@@ -106,5 +116,5 @@ func TestMethodsOfLabel(t *testing.T) {
 
 	l, err = GetLabel(id)
 	require.Nil(t, err)
-	assert.Nil(t, l)
+	assert.True(t, l.Deleted)
 }

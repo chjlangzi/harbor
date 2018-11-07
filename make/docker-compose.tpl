@@ -1,9 +1,10 @@
 version: '2'
 services:
   log:
-    image: vmware/harbor-log:__version__
+    image: goharbor/harbor-log:__version__
     container_name: harbor-log 
     restart: always
+    dns_search: .
     volumes:
       - /var/log/harbor/:/var/log/docker/:z
       - ./common/config/log/:/etc/logrotate.d/:z
@@ -12,7 +13,7 @@ services:
     networks:
       - harbor
   registry:
-    image: vmware/registry-photon:__reg_version__
+    image: goharbor/registry-photon:__reg_version__
     container_name: registry
     restart: always
     volumes:
@@ -20,10 +21,7 @@ services:
       - ./common/config/registry/:/etc/registry/:z
     networks:
       - harbor
-    environment:
-      - GODEBUG=netdns=cgo
-    command:
-      ["serve", "/etc/registry/config.yml"]
+    dns_search: .
     depends_on:
       - log
     logging:
@@ -31,14 +29,35 @@ services:
       options:  
         syslog-address: "tcp://127.0.0.1:1514"
         tag: "registry"
+  registryctl:
+    image: goharbor/harbor-registryctl:__version__
+    container_name: registryctl
+    env_file:
+      - ./common/config/registryctl/env
+    restart: always
+    volumes:
+      - /data/registry:/storage:z
+      - ./common/config/registry/:/etc/registry/:z
+      - ./common/config/registryctl/config.yml:/etc/registryctl/config.yml:z
+    networks:
+      - harbor
+    dns_search: .
+    depends_on:
+      - log
+    logging:
+      driver: "syslog"
+      options:  
+        syslog-address: "tcp://127.0.0.1:1514"
+        tag: "registryctl"
   postgresql:
-    image: vmware/harbor-db:__version__
+    image: goharbor/harbor-db:__version__
     container_name: harbor-db
     restart: always
     volumes:
       - /data/database:/var/lib/postgresql/data:z
     networks:
       - harbor
+    dns_search: .
     env_file:
       - ./common/config/db/env
     depends_on:
@@ -49,7 +68,7 @@ services:
         syslog-address: "tcp://127.0.0.1:1514"
         tag: "postgresql"
   adminserver:
-    image: vmware/harbor-adminserver:__version__
+    image: goharbor/harbor-adminserver:__version__
     container_name: harbor-adminserver
     env_file:
       - ./common/config/adminserver/env
@@ -60,6 +79,7 @@ services:
       - /data/:/data/:z
     networks:
       - harbor
+    dns_search: .
     depends_on:
       - log
     logging:
@@ -67,21 +87,23 @@ services:
       options:  
         syslog-address: "tcp://127.0.0.1:1514"
         tag: "adminserver"
-  ui:
-    image: vmware/harbor-ui:__version__
-    container_name: harbor-ui
+  core:
+    image: goharbor/harbor-core:__version__
+    container_name: harbor-core
     env_file:
-      - ./common/config/ui/env
+      - ./common/config/core/env
     restart: always
     volumes:
-      - ./common/config/ui/app.conf:/etc/ui/app.conf:z
-      - ./common/config/ui/private_key.pem:/etc/ui/private_key.pem:z
-      - ./common/config/ui/certificates/:/etc/ui/certificates/:z
-      - /data/secretkey:/etc/ui/key:z
-      - /data/ca_download/:/etc/ui/ca/:z
-      - /data/psc/:/etc/ui/token/:z
+      - ./common/config/core/app.conf:/etc/core/app.conf:z
+      - ./common/config/core/private_key.pem:/etc/core/private_key.pem:z
+      - ./common/config/core/certificates/:/etc/core/certificates/:z
+      - /data/secretkey:/etc/core/key:z
+      - /data/ca_download/:/etc/core/ca/:z
+      - /data/psc/:/etc/core/token/:z
+      - /data/:/data/:z
     networks:
       - harbor
+    dns_search: .
     depends_on:
       - log
       - adminserver
@@ -90,9 +112,25 @@ services:
       driver: "syslog"
       options:  
         syslog-address: "tcp://127.0.0.1:1514"
-        tag: "ui"
+        tag: "core"
+  portal:
+    image: goharbor/harbor-portal:__version__
+    container_name: harbor-portal
+    restart: always
+    networks:
+      - harbor
+    dns_search: .
+    depends_on:
+      - log
+      - core
+    logging:
+      driver: "syslog"
+      options:
+        syslog-address: "tcp://127.0.0.1:1514"
+        tag: "portal"
+
   jobservice:
-    image: vmware/harbor-jobservice:__version__
+    image: goharbor/harbor-jobservice:__version__
     container_name: harbor-jobservice
     env_file:
       - ./common/config/jobservice/env
@@ -102,38 +140,41 @@ services:
       - ./common/config/jobservice/config.yml:/etc/jobservice/config.yml:z
     networks:
       - harbor
+    dns_search: .
     depends_on:
       - redis
-      - ui
+      - core
       - adminserver
     logging:
       driver: "syslog"
-      options:  
+      options:
         syslog-address: "tcp://127.0.0.1:1514"
         tag: "jobservice"
   redis:
-    image: vmware/redis-photon:__redis_version__
+    image: goharbor/redis-photon:__redis_version__
     container_name: redis
     restart: always
     volumes:
-      - /data/redis:/data
+      - /data/redis:/var/lib/redis
     networks:
       - harbor
+    dns_search: .
     depends_on:
       - log
     logging:
       driver: "syslog"
-      options:  
+      options:
         syslog-address: "tcp://127.0.0.1:1514"
         tag: "redis"
   proxy:
-    image: vmware/nginx-photon:__nginx_version__
+    image: goharbor/nginx-photon:__version__
     container_name: nginx
     restart: always
     volumes:
       - ./common/config/nginx:/etc/nginx:z
     networks:
       - harbor
+    dns_search: .
     ports:
       - 80:80
       - 443:443
@@ -141,7 +182,8 @@ services:
     depends_on:
       - postgresql
       - registry
-      - ui
+      - core
+      - portal
       - log
     logging:
       driver: "syslog"

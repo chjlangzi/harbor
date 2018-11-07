@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,9 +26,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/goharbor/harbor/src/adminserver/systemcfg"
+	"github.com/goharbor/harbor/src/common"
 	"github.com/stretchr/testify/assert"
-	"github.com/vmware/harbor/src/adminserver/systemcfg"
-	"github.com/vmware/harbor/src/common"
 )
 
 type fakeCfgStore struct {

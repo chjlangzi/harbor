@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,34 +17,11 @@ package trigger
 import (
 	"testing"
 
+	"github.com/goharbor/harbor/src/replication"
 	"github.com/stretchr/testify/assert"
-	"github.com/vmware/harbor/src/replication"
 )
 
 func TestKindOfScheduleTrigger(t *testing.T) {
 	trigger := NewScheduleTrigger(ScheduleParam{})
 	assert.Equal(t, replication.TriggerKindSchedule, trigger.Kind())
-}
-
-func TestParseOfftime(t *testing.T) {
-	cases := []struct {
-		offtime int64
-		hour    int
-		minite  int
-		second  int
-	}{
-		{0, 0, 0, 0},
-		{1, 0, 0, 1},
-		{60, 0, 1, 0},
-		{3600, 1, 0, 0},
-		{3661, 1, 1, 1},
-		{3600*24 + 60, 0, 1, 0},
-	}
-
-	for _, c := range cases {
-		h, m, s := parseOfftime(c.offtime)
-		assert.Equal(t, c.hour, h)
-		assert.Equal(t, c.minite, m)
-		assert.Equal(t, c.second, s)
-	}
 }

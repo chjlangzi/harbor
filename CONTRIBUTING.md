@@ -4,15 +4,14 @@
 
 Welcome to Harbor! This guide provides information on filing issues and guidelines for open source contributors. **Please leave comments / suggestions if you find something is missing or incorrect.**
 
-Contributors are encouraged to collaborate using the following resources in addition to the GitHub [issue tacker](https://github.com/vmware/harbor/issues):
-* [Slack](https://vmwarecode.slack.com/messages/harbor): If you don't have an @vmware.com or @emc.com email, please sign up at [VMware {code}](https://code.vmware.com/join/) to get a Slack invite.
-* Mail group: Use harbor-dev@googlegroups.com for discussion on Harbor development and contribution. To subscribe, send an email to harbor-dev+subscribe@googlegroups.com .
+Contributors are encouraged to collaborate using the following resources in addition to the GitHub [issue tacker](https://github.com/goharbor/harbor/issues):
+
+**Twitter:** [@project_harbor](https://twitter.com/project_harbor)  
+**User Group:** Join Harbor user email group: [harbor-users@googlegroups.com](https://groups.google.com/forum/#!forum/harbor-users) to get update of Harbor's news, features, releases, or to provide suggestion and feedback. To subscribe, send an email to [harbor-users+subscribe@googlegroups.com](mailto:harbor-users+subscribe@googlegroups.com) .  
+**Developer Group:** Join Harbor developer group: [harbor-dev@googlegroups.com](https://groups.google.com/forum/#!forum/harbor-dev) for discussion on Harbor development and contribution. To subscribe, send an email to [harbor-dev+subscribe@googlegroups.com](mailto:harbor-dev+subscribe@googlegroups.com).  
+**Slack:** Join Harbor's community for discussion and ask questions: [Cloud Native Computing Foundation](https://slack.cncf.io/), channel: #harbor and #harbor-dev
 
 ## Getting Started
-
-### Sign the CLA
-
-Before doing contributions, you must sign the CLA. If it is the first time you're making a Pull Requests(PR), please make sure to sign the contributor license agreement (CLA) online. A bot will automatically update the PR for the CLA process.
 
 ### Fork Repository
 
@@ -20,15 +19,15 @@ Fork the Harbor repository on GitHub to your personal account.
 ```
 #Set golang environment
 export GOPATH=$HOME/go
-mkdir -p $GOPATH/src/github.com/vmware
+mkdir -p $GOPATH/src/github.com/goharbor
 
 #Get code
-go get github.com/vmware/harbor
-cd $GOPATH/src/github.com/vmware/harbor
+go get github.com/goharbor/harbor
+cd $GOPATH/src/github.com/goharbor/harbor
 
 #Track repository under your personal account
 git config push.default nothing # Anything to avoid pushing to vmware/harbor by default
-git remote rename origin vmware 
+git remote rename origin vmware
 git remote add $USER git@github.com:$USER/harbor.git
 git fetch $USER
 
@@ -93,9 +92,9 @@ The folder graph below shows the structure of the source code folder `harbor/src
 │   ├── static
 │   ├── utils
 │   └── views
-├── ui_ng               # The code of harbor web UI
+├── portal               # The code of harbor web UI
 │   ├── e2e
-│   ├── lib             # Source code of harbor-ui npm library which includes the main UI components of web UI
+│   ├── lib             # Source code of @harbor/ui npm library which includes the main UI components of web UI
 │   └── src             # General web page UI code of Harbor
 └── vendor              # Go code dependencies
     ├── github.com
@@ -134,11 +133,11 @@ Harbor web UI is built based on [Clarity](https://vmware.github.io/clarity/) and
 **Npm Package Dependency:** Run the following commands to restore the package dependencies.
 ```
 #For the web UI
-cd $REPO_DIR/src/ui_ng
+cd $REPO_DIR/src/portal
 npm install
 
 #For the UI library
-cd $REPO_DIR/src/ui_ng/lib
+cd $REPO_DIR/src/portal/lib
 npm install
 ```
 
@@ -149,7 +148,7 @@ To run the code, please refer to the [build](docs/compile_guide.md) guideline.
 
 PR are always welcome, even if they only contain small fixes like typos or a few lines of code. If there will be a significant effort, please document it as an issue and get a discussion going before starting to work on it.
 
-Please submit a PR broken down into small changes bit by bit. A PR consisting of a lot features and code changes may be hard to review. It is recommended to submit PRs in an incremental fasion.
+Please submit a PR broken down into small changes bit by bit. A PR consisting of a lot features and code changes may be hard to review. It is recommended to submit PRs in an incremental fashion.
 
 The graphic shown below describes the overall workflow about how to contribute code to Harbor repository.
 ![contribute workflow](docs/img/workflow.png)
@@ -160,7 +159,7 @@ Fork the Harbor repository and clone the code to your local workspace. Per Go's 
 
 Define a local working directory:
 ```
-working_dir=$GOPATH/src/github.com/vmware
+working_dir=$GOPATH/src/github.com/goharbor
 ```
 
 Set user to match your github profile name:
@@ -213,7 +212,7 @@ go test -v ./...
 
 Run UI library test cases:
 ```
-#cd #working_dir/src/ui_ng/lib
+#cd #working_dir/src/portal/lib
 npm run test
 ```
 
@@ -246,18 +245,18 @@ To help write conforming commit messages, it is recommended to set up the [git-g
 
 ```
 curl https://cdn.rawgit.com/tommarshall/git-good-commit/v0.6.1/hook.sh > .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
-``` 
+```
 
 ### Automated Testing
-Once your pull request has been opened, harbor will run two CI pipelines againest it. 
-1. In the travis CI, your source code will be checked via `golint`, `go vet` and `go race` that makes sure the code is readable, safe and correct. Also all of unit tests will be triggered via `go test` against the pull request. What you need to pay attation to is the travis result and the coverage report. 
+Once your pull request has been opened, harbor will run two CI pipelines against it.
+1. In the travis CI, your source code will be checked via `golint`, `go vet` and `go race` that makes sure the code is readable, safe and correct. Also all of unit tests will be triggered via `go test` against the pull request. What you need to pay attention to is the travis result and the coverage report.
 * If any failure in travis, you need to figure out whether it is introduced by your commits.
 * If the coverage dramatic decline, you need to commit unit test to coverage your code.
 2. In the drone CI, the E2E test will be triggered against the pull request. The pipeline is about to build and install harbor from source code, then to run four very basic E2E tests to validate the basic functionalities of harbor, like:
-* Registry Basic Verfication, to validate the image can be pulled and pushed successful.
-* Clair Basic Verfication, to validate the image can be scanned successful.
-* Notary Basic Verfication, to validate the image can be signed successful.
-* Ldap Basic Verfication, to validate harbor can work in LDAP environment. 
+* Registry Basic Verification, to validate the image can be pulled and pushed successful.
+* Clair Basic Verification, to validate the image can be scanned successful.
+* Notary Basic Verification, to validate the image can be signed successful.
+* Ldap Basic Verification, to validate harbor can work in LDAP environment.
 
 ### Push and Create PR
 When ready for review, push your branch to your fork repository on `github.com`:
@@ -283,20 +282,20 @@ When reporting issues, always include:
 
 * Version of docker engine and docker-compose
 * Configuration files of Harbor
-* Log files in /var/log/harbor/ 
+* Log files in /var/log/harbor/
 
 Because the issues are open to the public, when submitting the log and configuration files, be sure to remove any sensitive information, e.g. user name, password, IP address, and company name. You can
 replace those parts with "REDACTED" or other strings like "****".
 
 Be sure to include the steps to reproduce the problem if applicable. It can help us understand and fix your issue faster.
 
-## Documenting 
+## Documenting
 
 Update the documentation if you are creating or changing features. Good documentation is as important as the code itself.
 
 The main location for the document is the `docs/` folder. The images referred in documents can be placed in `docs/img`.
 
-Documents are written with Markdown text. See [Writting on GitHub](https://help.github.com/categories/writing-on-github/) for more details.
+Documents are written with Markdown text. See [Writing on GitHub](https://help.github.com/categories/writing-on-github/) for more details.
 
 ## Design new features
 

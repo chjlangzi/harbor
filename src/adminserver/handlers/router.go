@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,16 +17,15 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/goharbor/harbor/src/adminserver/api"
 	"github.com/gorilla/mux"
-	"github.com/vmware/harbor/src/adminserver/api"
 )
 
 func newRouter() http.Handler {
 	r := mux.NewRouter()
-	r.HandleFunc("/api/configurations", api.ListCfgs).Methods("GET")
 	r.HandleFunc("/api/configurations", api.UpdateCfgs).Methods("PUT")
+	r.HandleFunc("/api/configs", api.ListCfgs).Methods("GET")
 	r.HandleFunc("/api/configurations/reset", api.ResetCfgs).Methods("POST")
-	r.HandleFunc("/api/systeminfo/capacity", api.Capacity).Methods("GET")
 	r.HandleFunc("/api/ping", api.Ping).Methods("GET")
 	return r
 }

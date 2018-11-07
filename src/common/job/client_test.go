@@ -1,9 +1,9 @@
 package job
 
 import (
+	"github.com/goharbor/harbor/src/common/job/models"
+	"github.com/goharbor/harbor/src/common/job/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/vmware/harbor/src/common/job/models"
-	"github.com/vmware/harbor/src/common/job/test"
 	"os"
 	"testing"
 )

@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@ package secret
 import (
 	"fmt"
 
-	"github.com/vmware/harbor/src/common"
-	"github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/common/secret"
-	"github.com/vmware/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/common"
+	"github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/common/secret"
+	"github.com/goharbor/harbor/src/common/utils/log"
 )
 
 // SecurityContext implements security.Context interface based on secret store
@@ -71,22 +71,30 @@ func (s *SecurityContext) IsSolutionUser() bool {
 }
 
 // HasReadPerm returns true if the corresponding user of the secret
-// is jobservice, otherwise returns false
+// is jobservice or core service, otherwise returns false
 func (s *SecurityContext) HasReadPerm(projectIDOrName interface{}) bool {
 	if s.store == nil {
 		return false
 	}
-	return s.store.GetUsername(s.secret) == secret.JobserviceUser || s.store.GetUsername(s.secret) == secret.UIUser
+	return s.store.GetUsername(s.secret) == secret.JobserviceUser || s.store.GetUsername(s.secret) == secret.CoreUser
 }
 
-// HasWritePerm always returns false
+// HasWritePerm returns true if the corresponding user of the secret
+// is jobservice or core service, otherwise returns false
 func (s *SecurityContext) HasWritePerm(projectIDOrName interface{}) bool {
-	return false
+	if s.store == nil {
+		return false
+	}
+	return s.store.GetUsername(s.secret) == secret.JobserviceUser || s.store.GetUsername(s.secret) == secret.CoreUser
 }
 
-// HasAllPerm always returns false
+// HasAllPerm returns true if the corresponding user of the secret
+// is jobservice or core service, otherwise returns false
 func (s *SecurityContext) HasAllPerm(projectIDOrName interface{}) bool {
-	return false
+	if s.store == nil {
+		return false
+	}
+	return s.store.GetUsername(s.secret) == secret.JobserviceUser || s.store.GetUsername(s.secret) == secret.CoreUser
 }
 
 // GetMyProjects ...

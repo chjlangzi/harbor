@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,16 +17,16 @@ package core
 import (
 	"fmt"
 
-	common_models "github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/common/utils/log"
-	"github.com/vmware/harbor/src/replication"
-	"github.com/vmware/harbor/src/replication/models"
-	"github.com/vmware/harbor/src/replication/policy"
-	"github.com/vmware/harbor/src/replication/replicator"
-	"github.com/vmware/harbor/src/replication/source"
-	"github.com/vmware/harbor/src/replication/target"
-	"github.com/vmware/harbor/src/replication/trigger"
-	"github.com/vmware/harbor/src/ui/utils"
+	common_models "github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/core/utils"
+	"github.com/goharbor/harbor/src/replication"
+	"github.com/goharbor/harbor/src/replication/models"
+	"github.com/goharbor/harbor/src/replication/policy"
+	"github.com/goharbor/harbor/src/replication/replicator"
+	"github.com/goharbor/harbor/src/replication/source"
+	"github.com/goharbor/harbor/src/replication/target"
+	"github.com/goharbor/harbor/src/replication/trigger"
 )
 
 // Controller defines the methods that a replicatoin controllter should implement
@@ -36,42 +36,42 @@ type Controller interface {
 	Replicate(policyID int64, metadata ...map[string]interface{}) error
 }
 
-//DefaultController is core module to cordinate and control the overall workflow of the
-//replication modules.
+// DefaultController is core module to cordinate and control the overall workflow of the
+// replication modules.
 type DefaultController struct {
-	//Indicate whether the controller has been initialized or not
+	// Indicate whether the controller has been initialized or not
 	initialized bool
 
-	//Manage the policies
+	// Manage the policies
 	policyManager policy.Manager
 
-	//Manage the targets
+	// Manage the targets
 	targetManager target.Manager
 
-	//Handle the things related with source
+	// Handle the things related with source
 	sourcer *source.Sourcer
 
-	//Manage the triggers of policies
+	// Manage the triggers of policies
 	triggerManager *trigger.Manager
 
-	//Handle the replication work
+	// Handle the replication work
 	replicator replicator.Replicator
 }
 
-//Keep controller as singleton instance
+// Keep controller as singleton instance
 var (
 	GlobalController Controller
 )
 
-//ControllerConfig includes related configurations required by the controller
+// ControllerConfig includes related configurations required by the controller
 type ControllerConfig struct {
-	//The capacity of the cache storing enabled triggers
+	// The capacity of the cache storing enabled triggers
 	CacheCapacity int
 }
 
-//NewDefaultController is the constructor of DefaultController.
+// NewDefaultController is the constructor of DefaultController.
 func NewDefaultController(cfg ControllerConfig) *DefaultController {
-	//Controller refer the default instances
+	// Controller refer the default instances
 	ctl := &DefaultController{
 		policyManager:  policy.NewDefaultManager(),
 		targetManager:  target.NewDefaultManager(),
@@ -86,17 +86,17 @@ func NewDefaultController(cfg ControllerConfig) *DefaultController {
 
 // Init creates the GlobalController and inits it
 func Init() error {
-	GlobalController = NewDefaultController(ControllerConfig{}) //Use default data
+	GlobalController = NewDefaultController(ControllerConfig{}) // Use default data
 	return GlobalController.Init()
 }
 
-//Init will initialize the controller and the sub components
+// Init will initialize the controller and the sub components
 func (ctl *DefaultController) Init() error {
 	if ctl.initialized {
 		return nil
 	}
 
-	//Initialize sourcer
+	// Initialize sourcer
 	ctl.sourcer.Init()
 
 	ctl.initialized = true
@@ -104,7 +104,7 @@ func (ctl *DefaultController) Init() error {
 	return nil
 }
 
-//CreatePolicy is used to create a new policy and enable it if necessary
+// CreatePolicy is used to create a new policy and enable it if necessary
 func (ctl *DefaultController) CreatePolicy(newPolicy models.ReplicationPolicy) (int64, error) {
 	id, err := ctl.policyManager.CreatePolicy(newPolicy)
 	if err != nil {
@@ -119,8 +119,8 @@ func (ctl *DefaultController) CreatePolicy(newPolicy models.ReplicationPolicy) (
 	return id, nil
 }
 
-//UpdatePolicy will update the policy with new content.
-//Parameter updatedPolicy must have the ID of the updated policy.
+// UpdatePolicy will update the policy with new content.
+// Parameter updatedPolicy must have the ID of the updated policy.
 func (ctl *DefaultController) UpdatePolicy(updatedPolicy models.ReplicationPolicy) error {
 	id := updatedPolicy.ID
 	originPolicy, err := ctl.policyManager.GetPolicy(id)
@@ -142,7 +142,7 @@ func (ctl *DefaultController) UpdatePolicy(updatedPolicy models.ReplicationPolic
 				reset = true
 			}
 		case replication.TriggerKindImmediate:
-			// Always reset immediate trigger as it is relevent with namespaces
+			// Always reset immediate trigger as it is relevant with namespaces
 			reset = true
 		default:
 			// manual trigger, no need to reset
@@ -164,7 +164,7 @@ func (ctl *DefaultController) UpdatePolicy(updatedPolicy models.ReplicationPolic
 	return nil
 }
 
-//RemovePolicy will remove the specified policy and clean the related settings
+// RemovePolicy will remove the specified policy and clean the related settings
 func (ctl *DefaultController) RemovePolicy(policyID int64) error {
 	// TODO check pre-conditions
 
@@ -184,18 +184,18 @@ func (ctl *DefaultController) RemovePolicy(policyID int64) error {
 	return ctl.policyManager.RemovePolicy(policyID)
 }
 
-//GetPolicy is delegation of GetPolicy of Policy.Manager
+// GetPolicy is delegation of GetPolicy of Policy.Manager
 func (ctl *DefaultController) GetPolicy(policyID int64) (models.ReplicationPolicy, error) {
 	return ctl.policyManager.GetPolicy(policyID)
 }
 
-//GetPolicies is delegation of GetPoliciemodels.ReplicationPolicy{}s of Policy.Manager
+// GetPolicies is delegation of GetPoliciemodels.ReplicationPolicy{}s of Policy.Manager
 func (ctl *DefaultController) GetPolicies(query models.QueryParameter) (*models.ReplicationPolicyQueryResult, error) {
 	return ctl.policyManager.GetPolicies(query)
 }
 
-//Replicate starts one replication defined in the specified policy;
-//Can be launched by the API layer and related triggers.
+// Replicate starts one replication defined in the specified policy;
+// Can be launched by the API layer and related triggers.
 func (ctl *DefaultController) Replicate(policyID int64, metadata ...map[string]interface{}) error {
 	policy, err := ctl.GetPolicy(policyID)
 	if err != nil {
@@ -208,7 +208,7 @@ func (ctl *DefaultController) Replicate(policyID int64, metadata ...map[string]i
 	// prepare candidates for replication
 	candidates := getCandidates(&policy, ctl.sourcer, metadata...)
 	if len(candidates) == 0 {
-		log.Debugf("replicaton candidates are null, no further action needed")
+		log.Debugf("replication candidates are null, no further action needed")
 	}
 
 	targets := []*common_models.RepTarget{}
@@ -259,17 +259,34 @@ func getCandidates(policy *models.ReplicationPolicy, sourcer *source.Sourcer,
 func buildFilterChain(policy *models.ReplicationPolicy, sourcer *source.Sourcer) source.FilterChain {
 	filters := []source.Filter{}
 
-	patterns := map[string]string{}
-	for _, f := range policy.Filters {
-		patterns[f.Kind] = f.Pattern
+	fm := map[string][]models.Filter{}
+	for _, filter := range policy.Filters {
+		fm[filter.Kind] = append(fm[filter.Kind], filter)
 	}
 
 	registry := sourcer.GetAdaptor(replication.AdaptorKindHarbor)
-	// only support repository and tag filter for now
+	// repository filter
+	pattern := ""
+	repoFilters := fm[replication.FilterItemKindRepository]
+	if len(repoFilters) > 0 {
+		pattern = repoFilters[0].Value.(string)
+	}
 	filters = append(filters,
-		source.NewRepositoryFilter(patterns[replication.FilterItemKindRepository], registry))
+		source.NewRepositoryFilter(pattern, registry))
+	// tag filter
+	pattern = ""
+	tagFilters := fm[replication.FilterItemKindTag]
+	if len(tagFilters) > 0 {
+		pattern = tagFilters[0].Value.(string)
+	}
 	filters = append(filters,
-		source.NewTagFilter(patterns[replication.FilterItemKindTag], registry))
+		source.NewTagFilter(pattern, registry))
+	// label filters
+	var labelID int64
+	for _, labelFilter := range fm[replication.FilterItemKindLabel] {
+		labelID = labelFilter.Value.(int64)
+		filters = append(filters, source.NewLabelFilter(labelID))
+	}
 
 	return source.NewDefaultFilterChain(filters)
 }

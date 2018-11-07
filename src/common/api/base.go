@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import (
 	"strconv"
 
 	"github.com/astaxie/beego/validation"
-	http_error "github.com/vmware/harbor/src/common/utils/error"
-	"github.com/vmware/harbor/src/common/utils/log"
+	http_error "github.com/goharbor/harbor/src/common/utils/error"
+	"github.com/goharbor/harbor/src/common/utils/log"
 
 	"github.com/astaxie/beego"
 )
@@ -70,6 +70,12 @@ func (b *BaseAPI) HandleForbidden(username string) {
 func (b *BaseAPI) HandleBadRequest(text string) {
 	log.Info(text)
 	b.RenderError(http.StatusBadRequest, text)
+}
+
+// HandleStatusPreconditionFailed ...
+func (b *BaseAPI) HandleStatusPreconditionFailed(text string) {
+	log.Info(text)
+	b.RenderError(http.StatusPreconditionFailed, text)
 }
 
 // HandleConflict ...

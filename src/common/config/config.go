@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/astaxie/beego/cache"
-	"github.com/vmware/harbor/src/adminserver/client"
-	"github.com/vmware/harbor/src/common"
+	"github.com/goharbor/harbor/src/adminserver/client"
+	"github.com/goharbor/harbor/src/common"
 )
 
 // Manager manages configurations

@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ import (
 	"strings"
 	// "time"
 
-	"github.com/vmware/harbor/src/common/utils"
-	registry_error "github.com/vmware/harbor/src/common/utils/error"
+	"github.com/goharbor/harbor/src/common/utils"
+	registry_error "github.com/goharbor/harbor/src/common/utils/error"
 )
 
 // Registry holds information of a registry entity
@@ -110,7 +110,7 @@ func (r *Registry) Catalog() ([]string, error) {
 			}
 
 			repos = append(repos, catalogResp.Repositories...)
-			//Link: </v2/_catalog?last=library%2Fhello-world-25&n=100>; rel="next"
+			// Link: </v2/_catalog?last=library%2Fhello-world-25&n=100>; rel="next"
 			link := resp.Header.Get("Link")
 			if strings.HasSuffix(link, `rel="next"`) && strings.Index(link, "<") >= 0 && strings.Index(link, ">") >= 0 {
 				suffix = link[strings.Index(link, "<")+1 : strings.Index(link, ">")]

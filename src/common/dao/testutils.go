@@ -1,4 +1,4 @@
-// copyright (c) 2017 vmware, inc. all rights reserved.
+// Copyright Project Harbor Authors
 //
 // licensed under the apache license, version 2.0 (the "license");
 // you may not use this file except in compliance with the license.
@@ -19,8 +19,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/common/utils/log"
 )
 
 var defaultRegistered = false
@@ -87,6 +87,9 @@ func initDatabaseForTest(db *models.Database) {
 		alias = "default"
 	}
 	if err := database.Register(alias); err != nil {
+		panic(err)
+	}
+	if err := database.UpgradeSchema(); err != nil {
 		panic(err)
 	}
 

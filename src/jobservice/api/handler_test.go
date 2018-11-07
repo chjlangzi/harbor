@@ -1,4 +1,16 @@
-// Copyright 2018 The Harbor Authors. All rights reserved.
+// Copyright Project Harbor Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package api
 
 import (
@@ -15,8 +27,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vmware/harbor/src/jobservice/env"
-	"github.com/vmware/harbor/src/jobservice/models"
+	"github.com/goharbor/harbor/src/jobservice/env"
+	"github.com/goharbor/harbor/src/jobservice/models"
 )
 
 const fakeSecret = "I'mfakesecret"
@@ -227,6 +239,22 @@ func TestCheckStatus(t *testing.T) {
 	ctx.WG.Wait()
 }
 
+func TestGetJobLogInvalidID(t *testing.T) {
+	exportUISecret(fakeSecret)
+
+	server, port, ctx := createServer()
+	server.Start()
+	<-time.After(200 * time.Millisecond)
+
+	_, err := getReq(fmt.Sprintf("http://localhost:%d/api/v1/jobs/%%2F..%%2Fpasswd/log", port))
+	if err == nil || strings.Contains(err.Error(), "400") {
+		t.Fatalf("Expected 400 error but got: %v", err)
+	}
+
+	server.Stop()
+	ctx.WG.Wait()
+}
+
 func TestGetJobLog(t *testing.T) {
 	exportUISecret(fakeSecret)
 
@@ -361,7 +389,7 @@ func getReq(url string) ([]byte, error) {
 }
 
 func exportUISecret(secret string) {
-	os.Setenv("UI_SECRET", secret)
+	os.Setenv("CORE_SECRET", secret)
 }
 
 type fakeController struct{}
@@ -408,7 +436,7 @@ func (fc *fakeController) CancelJob(jobID string) error {
 
 func (fc *fakeController) CheckStatus() (models.JobPoolStats, error) {
 	return models.JobPoolStats{
-		Pools: []*models.JobPoolStatsData{&models.JobPoolStatsData{
+		Pools: []*models.JobPoolStatsData{{
 			WorkerPoolID: "fake_pool_ID",
 			Status:       "running",
 			StartedAt:    time.Now().Unix(),

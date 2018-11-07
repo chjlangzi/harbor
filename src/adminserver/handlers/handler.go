@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/goharbor/harbor/src/adminserver/auth"
+	"github.com/goharbor/harbor/src/common/utils/log"
 	gorilla_handlers "github.com/gorilla/handlers"
-	"github.com/vmware/harbor/src/adminserver/auth"
-	"github.com/vmware/harbor/src/common/utils/log"
 )
 
 // NewHandler returns a gorilla router which is wrapped by  authenticate handler
@@ -28,11 +28,11 @@ import (
 func NewHandler() http.Handler {
 	h := newRouter()
 	secrets := map[string]string{
-		"uiSecret":         os.Getenv("UI_SECRET"),
+		"uiSecret":         os.Getenv("CORE_SECRET"),
 		"jobserviceSecret": os.Getenv("JOBSERVICE_SECRET"),
 	}
 	insecureAPIs := map[string]bool{
-		"/api/ping":true,
+		"/api/ping": true,
 	}
 	h = newAuthHandler(auth.NewSecretAuthenticator(secrets), h, insecureAPIs)
 	h = gorilla_handlers.LoggingHandler(os.Stdout, h)
@@ -49,7 +49,7 @@ func newAuthHandler(authenticator auth.Authenticator, handler http.Handler, inse
 	return &authHandler{
 		authenticator: authenticator,
 		handler:       handler,
-		insecureAPIs:   insecureAPIs,
+		insecureAPIs:  insecureAPIs,
 	}
 }
 
@@ -61,7 +61,7 @@ func (a *authHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if a.insecureAPIs !=nil && a.insecureAPIs[r.URL.Path] {
+	if a.insecureAPIs != nil && a.insecureAPIs[r.URL.Path] {
 		if a.handler != nil {
 			a.handler.ServeHTTP(w, r)
 		}

@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,10 +18,11 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/vmware/harbor/src/common/dao"
-	persist_models "github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/replication/models"
-	"github.com/vmware/harbor/src/ui/config"
+	"github.com/goharbor/harbor/src/common/dao"
+	persist_models "github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/core/config"
+	"github.com/goharbor/harbor/src/replication"
+	"github.com/goharbor/harbor/src/replication/models"
 )
 
 // Manager defines the method a policy manger should implement
@@ -33,15 +34,15 @@ type Manager interface {
 	RemovePolicy(int64) error
 }
 
-//DefaultManager provides replication policy CURD capabilities.
+// DefaultManager provides replication policy CURD capabilities.
 type DefaultManager struct{}
 
-//NewDefaultManager is the constructor of DefaultManager.
+// NewDefaultManager is the constructor of DefaultManager.
 func NewDefaultManager() *DefaultManager {
 	return &DefaultManager{}
 }
 
-//GetPolicies returns all the policies
+// GetPolicies returns all the policies
 func (m *DefaultManager) GetPolicies(query models.QueryParameter) (*models.ReplicationPolicyQueryResult, error) {
 	result := &models.ReplicationPolicyQueryResult{
 		Policies: []*models.ReplicationPolicy{},
@@ -69,7 +70,7 @@ func (m *DefaultManager) GetPolicies(query models.QueryParameter) (*models.Repli
 	return result, nil
 }
 
-//GetPolicy returns the policy with the specified ID
+// GetPolicy returns the policy with the specified ID
 func (m *DefaultManager) GetPolicy(policyID int64) (models.ReplicationPolicy, error) {
 	policy, err := dao.GetRepPolicy(policyID)
 	if err != nil {
@@ -105,6 +106,16 @@ func convertFromPersistModel(policy *persist_models.RepPolicy) (models.Replicati
 		filters := []models.Filter{}
 		if err := json.Unmarshal([]byte(policy.Filters), &filters); err != nil {
 			return models.ReplicationPolicy{}, err
+		}
+		for i := range filters {
+			if filters[i].Value == nil && len(filters[i].Pattern) > 0 {
+				filters[i].Value = filters[i].Pattern
+			}
+			// convert the type of Value to int64 as the default type of
+			// json Unmarshal for number is float64
+			if filters[i].Kind == replication.FilterItemKindLabel {
+				filters[i].Value = int64(filters[i].Value.(float64))
+			}
 		}
 		ply.Filters = filters
 	}
@@ -157,9 +168,9 @@ func convertToPersistModel(policy models.ReplicationPolicy) (*persist_models.Rep
 	return ply, nil
 }
 
-//CreatePolicy creates a new policy with the provided data;
-//If creating failed, error will be returned;
-//If creating succeed, ID of the new created policy will be returned.
+// CreatePolicy creates a new policy with the provided data;
+// If creating failed, error will be returned;
+// If creating succeed, ID of the new created policy will be returned.
 func (m *DefaultManager) CreatePolicy(policy models.ReplicationPolicy) (int64, error) {
 	now := time.Now()
 	policy.CreationTime = now
@@ -171,8 +182,8 @@ func (m *DefaultManager) CreatePolicy(policy models.ReplicationPolicy) (int64, e
 	return dao.AddRepPolicy(*ply)
 }
 
-//UpdatePolicy updates the policy;
-//If updating failed, error will be returned.
+// UpdatePolicy updates the policy;
+// If updating failed, error will be returned.
 func (m *DefaultManager) UpdatePolicy(policy models.ReplicationPolicy) error {
 	policy.UpdateTime = time.Now()
 	ply, err := convertToPersistModel(policy)
@@ -182,8 +193,8 @@ func (m *DefaultManager) UpdatePolicy(policy models.ReplicationPolicy) error {
 	return dao.UpdateRepPolicy(ply)
 }
 
-//RemovePolicy removes the specified policy;
-//If removing failed, error will be returned.
+// RemovePolicy removes the specified policy;
+// If removing failed, error will be returned.
 func (m *DefaultManager) RemovePolicy(policyID int64) error {
 	return dao.DeleteRepPolicy(policyID)
 }

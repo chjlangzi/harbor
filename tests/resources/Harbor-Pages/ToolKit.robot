@@ -1,4 +1,4 @@
-# Copyright 2016-2017 VMware, Inc. All Rights Reserved.
+# Copyright Project Harbor Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,16 +21,18 @@ ${HARBOR_VERSION}  v1.1.1
 
 *** Keywords ***
 Delete Success
-    Page Should Contain  Deleted successfully
-    Page Should Not Contain  Deleted failed
-    Click Element  //clr-modal//button[contains(.,'CLOSE')]
+    [Arguments]  @{obj}
+    :For  ${obj}  in  @{obj}
+    \    Wait Until Page Contains Element  //clr-tab-content//div[contains(.,'${obj}')]/../div/clr-icon[@shape="success-standard"]
     Sleep  1
+    Capture Page Screenshot
 
-Partly Success
-    Page Should Contain  Deleted successfully
-    Page Should Contain  Deleted failed
-    Click Element  //clr-modal//button[contains(.,'CLOSE')]
+Delete Fail
+    [Arguments]  @{obj}
+    :For  ${obj}  in  @{obj}
+    \    Wait Until Page Contains Element  //clr-tab-content//div[contains(.,'${obj}')]/../div/clr-icon[@shape="error-standard"]
     Sleep  1
+    Capture Page Screenshot
 
 Filter Object
 #Filter project repo user tag.
@@ -44,12 +46,28 @@ Select Object
     [Arguments]    ${obj}
     Click Element  //clr-dg-row[contains(.,'${obj}')]//label
 
+# This func cannot support as the delete user flow changed.
 Multi-delete Object
     [Arguments]    @{obj}
     :For  ${obj}  in  @{obj}
     \    Click Element  //clr-dg-row[contains(.,'${obj}')]//label
     Sleep  1
+    Capture Page Screenshot
     Click Element  //button[contains(.,'Delete')]
+    Sleep  2
+    Capture Page Screenshot
+    Click Element  //clr-modal//button[contains(.,'DELETE')]
+    Sleep  3
+    Capture Page Screenshot
+
+Multi-delete User
+    [Arguments]    @{obj}
+    :For  ${obj}  in  @{obj}
+    \    Click Element  //clr-dg-row[contains(.,'${obj}')]//label
+    Sleep  1
+    Click Element  ${member_action_xpath}
+    Sleep  1
+    Click Element  //clr-dropdown/clr-dropdown-menu/button[2]
     Sleep  2
     Click Element  //clr-modal//button[contains(.,'DELETE')]
     Sleep  3
@@ -59,7 +77,9 @@ Multi-delete Member
     :For  ${obj}  in  @{obj}
     \    Click Element  //clr-dg-row[contains(.,'${obj}')]//label
     Sleep  1
-    Click Element  //button[contains(.,'REMOVE')]
+    Click Element  ${member_action_xpath}
+    Sleep  1
+    Click Element  ${delete_action_xpath}
     Sleep  2
     Click Element  //clr-modal//button[contains(.,'DELETE')]
     Sleep  3

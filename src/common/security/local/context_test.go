@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,15 +19,15 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/goharbor/harbor/src/common"
+	"github.com/goharbor/harbor/src/common/dao"
+	"github.com/goharbor/harbor/src/common/dao/project"
+	"github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/core/promgr"
+	"github.com/goharbor/harbor/src/core/promgr/pmsdriver/local"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vmware/harbor/src/common"
-	"github.com/vmware/harbor/src/common/dao"
-	"github.com/vmware/harbor/src/common/dao/project"
-	"github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/common/utils/log"
-	"github.com/vmware/harbor/src/ui/promgr"
-	"github.com/vmware/harbor/src/ui/promgr/pmsdriver/local"
 )
 
 var (
@@ -283,7 +283,7 @@ func TestHasAllPermWithGroup(t *testing.T) {
 		t.Errorf("Error occurred when GetUser: %v", err)
 	}
 	developer.GroupList = []*models.UserGroup{
-		&models.UserGroup{GroupName: "test_group", GroupType: 1, LdapGroupDN: "cn=harbor_user,dc=example,dc=com"},
+		{GroupName: "test_group", GroupType: 1, LdapGroupDN: "cn=harbor_user,dc=example,dc=com"},
 	}
 	ctx := NewSecurityContext(developer, pm)
 	assert.False(t, ctx.HasAllPerm(project.Name))
@@ -360,7 +360,7 @@ func TestSecurityContext_GetRolesByGroup(t *testing.T) {
 		t.Errorf("Error occurred when GetUser: %v", err)
 	}
 	developer.GroupList = []*models.UserGroup{
-		&models.UserGroup{GroupName: "test_group", GroupType: 1, LdapGroupDN: "cn=harbor_user,dc=example,dc=com"},
+		{GroupName: "test_group", GroupType: 1, LdapGroupDN: "cn=harbor_user,dc=example,dc=com"},
 	}
 	type fields struct {
 		user *models.User

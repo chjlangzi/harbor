@@ -4,48 +4,49 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/vmware/harbor/src/common/dao"
-	common_http "github.com/vmware/harbor/src/common/http"
-	"github.com/vmware/harbor/src/common/job"
-	job_models "github.com/vmware/harbor/src/common/job/models"
-	"github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/common/utils/log"
-	"github.com/vmware/harbor/src/replication"
-	"github.com/vmware/harbor/src/ui/config"
-	"github.com/vmware/harbor/src/ui/utils"
+	"github.com/goharbor/harbor/src/common/dao"
+	common_http "github.com/goharbor/harbor/src/common/http"
+	"github.com/goharbor/harbor/src/common/job"
+	job_models "github.com/goharbor/harbor/src/common/job/models"
+	"github.com/goharbor/harbor/src/common/models"
+	common_utils "github.com/goharbor/harbor/src/common/utils"
+	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/core/config"
+	"github.com/goharbor/harbor/src/core/utils"
+	"github.com/goharbor/harbor/src/replication"
 )
 
-//ScheduleTrigger will schedule a alternate policy to provide 'daily' and 'weekly' trigger ways.
+// ScheduleTrigger will schedule a alternate policy to provide 'daily' and 'weekly' trigger ways.
 type ScheduleTrigger struct {
 	params ScheduleParam
 }
 
-//NewScheduleTrigger is constructor of ScheduleTrigger
+// NewScheduleTrigger is constructor of ScheduleTrigger
 func NewScheduleTrigger(params ScheduleParam) *ScheduleTrigger {
 	return &ScheduleTrigger{
 		params: params,
 	}
 }
 
-//Kind is the implementation of same method defined in Trigger interface
+// Kind is the implementation of same method defined in Trigger interface
 func (st *ScheduleTrigger) Kind() string {
 	return replication.TriggerKindSchedule
 }
 
-//Setup is the implementation of same method defined in Trigger interface
+// Setup is the implementation of same method defined in Trigger interface
 func (st *ScheduleTrigger) Setup() error {
 	metadata := &job_models.JobMetadata{
 		JobKind: job.JobKindPeriodic,
 	}
 	switch st.params.Type {
 	case replication.TriggerScheduleDaily:
-		h, m, s := parseOfftime(st.params.Offtime)
+		h, m, s := common_utils.ParseOfftime(st.params.Offtime)
 		metadata.Cron = fmt.Sprintf("%d %d %d * * *", s, m, h)
 	case replication.TriggerScheduleWeekly:
-		h, m, s := parseOfftime(st.params.Offtime)
+		h, m, s := common_utils.ParseOfftime(st.params.Offtime)
 		metadata.Cron = fmt.Sprintf("%d %d %d * * %d", s, m, h, st.params.Weekday%7)
 	default:
-		return fmt.Errorf("unsupported schedual trigger type: %s", st.params.Type)
+		return fmt.Errorf("unsupported schedule trigger type: %s", st.params.Type)
 	}
 
 	id, err := dao.AddRepJob(models.RepJob{
@@ -60,12 +61,12 @@ func (st *ScheduleTrigger) Setup() error {
 		Name: job.ImageReplicate,
 		Parameters: map[string]interface{}{
 			"policy_id": st.params.PolicyID,
-			"url":       config.InternalUIURL(),
+			"url":       config.InternalCoreURL(),
 			"insecure":  true,
 		},
 		Metadata: metadata,
 		StatusHook: fmt.Sprintf("%s/service/notifications/jobs/replication/%d",
-			config.InternalUIURL(), id),
+			config.InternalCoreURL(), id),
 	})
 	if err != nil {
 		// clean up the job record in database
@@ -77,7 +78,7 @@ func (st *ScheduleTrigger) Setup() error {
 	return dao.SetRepJobUUID(id, uuid)
 }
 
-//Unset is the implementation of same method defined in Trigger interface
+// Unset is the implementation of same method defined in Trigger interface
 func (st *ScheduleTrigger) Unset() error {
 	jobs, err := dao.GetRepJobs(&models.RepJobQuery{
 		PolicyID:   st.params.PolicyID,
@@ -103,13 +104,4 @@ func (st *ScheduleTrigger) Unset() error {
 		}
 	}
 	return nil
-}
-
-func parseOfftime(offtime int64) (hour, minite, second int) {
-	offtime = offtime % (3600 * 24)
-	hour = int(offtime / 3600)
-	offtime = offtime % 3600
-	minite = int(offtime / 60)
-	second = int(offtime % 60)
-	return
 }

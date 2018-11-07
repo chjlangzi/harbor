@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,23 +17,23 @@ package source
 import (
 	"strings"
 
-	"github.com/vmware/harbor/src/common/utils/log"
-	"github.com/vmware/harbor/src/replication"
-	"github.com/vmware/harbor/src/replication/models"
-	"github.com/vmware/harbor/src/replication/registry"
+	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/replication"
+	"github.com/goharbor/harbor/src/replication/models"
+	"github.com/goharbor/harbor/src/replication/registry"
 )
 
 // TagFilter implements Filter interface to filter tag
 type TagFilter struct {
 	pattern   string
-	convertor Convertor
+	converter Converter
 }
 
 // NewTagFilter returns an instance of TagFilter
 func NewTagFilter(pattern string, registry registry.Adaptor) *TagFilter {
 	return &TagFilter{
 		pattern:   pattern,
-		convertor: NewTagConvertor(registry),
+		converter: NewTagConverter(registry),
 	}
 }
 
@@ -42,9 +42,9 @@ func (t *TagFilter) Init() error {
 	return nil
 }
 
-// GetConvertor ...
-func (t *TagFilter) GetConvertor() Convertor {
-	return t.convertor
+// GetConverter ...
+func (t *TagFilter) GetConverter() Converter {
+	return t.converter
 }
 
 // DoFilter filters tag of the image
@@ -71,7 +71,7 @@ func (t *TagFilter) DoFilter(items []models.FilterItem) []models.FilterItem {
 		tag := strings.SplitN(item.Value, ":", 2)[1]
 		matched, err := match(t.pattern, tag)
 		if err != nil {
-			log.Errorf("failed to match pattern %s to value %s: %v", t.pattern, tag, err)
+			log.Errorf("failed to match pattern %s to value %s: %v, skip it", t.pattern, tag, err)
 			continue
 		}
 

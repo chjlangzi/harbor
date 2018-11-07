@@ -1,4 +1,4 @@
-# Copyright 2016-2017 VMware, Inc. All Rights Reserved.
+# Copyright Project Harbor Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ Sign In Harbor
     Sleep  5
     ${title}=  Get Title
     Log To Console  ${title}
+    Run Keyword If  "${title}" != "Harbor"  Capture Screenshot And Source  ELSE  Log  The title is Harbor
     Should Be Equal  ${title}  Harbor
     Sleep  2
     Input Text  login_username  ${user}
@@ -35,6 +36,10 @@ Sign In Harbor
     sleep  5
     Log To Console  ${user}
     Wait Until Page Contains  ${user}
+
+Capture Screenshot And Source
+    Capture Page Screenshot
+    Log Source
 
 Sign Up Should Not Display
     Page Should Not Contain Element  xpath=${sign_up_button_xpath}

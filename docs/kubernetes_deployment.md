@@ -1,4 +1,4 @@
-**IMPORTANT** This guide is deprecated and not updated any more. We strongly recommend using [Harbor Helm Chart](https://github.com/vmware/harbor/tree/master/contrib/helm/harbor) to deploy latest Harbor release on Kubernetes.
+**IMPORTANT** This guide is deprecated and not updated any more. We strongly recommend using [Harbor Helm Chart](https://github.com/goharbor/harbor-helm) to deploy latest Harbor release on Kubernetes.
 
 ## Integration with Kubernetes
 This Document decribes how to deploy Harbor on Kubernetes. It has been verified on **Kubernetes v1.6.5** and **Harbor v1.2.0**
@@ -7,7 +7,7 @@ This Document decribes how to deploy Harbor on Kubernetes. It has been verified 
 
 * You should have domain knowledge about Kubernetes (Deployment, Service, Persistent Volume, Persistent Volume Claim, Config Map, Ingress).
 * **Optional**: Load the docker images onto woker nodes.  *If you skip this step, worker node will pull images from Docker Hub when starting the pods.*
-	* Download the offline installer of Harbor v1.2.0 from the [release](https://github.com/vmware/harbor/releases) page.
+	* Download the offline installer of Harbor v1.2.0 from the [release](https://github.com/goharbor/harbor/releases) page.
 	* Uncompress the offline installer and get the images tgz file harbor.*.tgz, transfer it to each of the worker nodes.
 	* Load the images into docker:  
 		```
@@ -93,7 +93,7 @@ If Basic Configuration was not covering your requirements, you can read this sec
 You can find all configs of Harbor in `make/kubernetes/templates/`. There are specifications of these files:
 
 - `jobservice.cm.yaml`: ENV and web config of jobservice
-- `mysql.cm.yaml`: Root passowrd of MySQL
+- `mysql.cm.yaml`: Root password of MySQL
 - `ingress.yaml`: Https certification and ingress config. If you are fimiliar with ingress, you can modify it.
 - `registry.cm.yaml`: Token service certification and registry config
   Registry use filesystem to store data of images. You can find it like:

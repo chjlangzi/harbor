@@ -1,16 +1,3 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 package ldap
 
 import (
@@ -18,12 +5,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/vmware/harbor/src/common"
-	"github.com/vmware/harbor/src/common/dao"
-	"github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/common/utils/log"
-	"github.com/vmware/harbor/src/common/utils/test"
-	uiConfig "github.com/vmware/harbor/src/ui/config"
+	"github.com/goharbor/harbor/src/common"
+	"github.com/goharbor/harbor/src/common/dao"
+	"github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/common/utils/test"
+	uiConfig "github.com/goharbor/harbor/src/core/config"
 	goldap "gopkg.in/ldap.v2"
 )
 
@@ -36,7 +23,7 @@ var adminServerLdapTestConfig = map[string]interface{}{
 	common.PostGreSQLUsername: "postgres",
 	common.PostGreSQLPassword: "root123",
 	common.PostGreSQLDatabase: "registry",
-	//config.SelfRegistration: true,
+	// config.SelfRegistration: true,
 	common.LDAPURL:              "ldap://127.0.0.1",
 	common.LDAPSearchDN:         "cn=admin,dc=example,dc=com",
 	common.LDAPSearchPwd:        "admin",
@@ -317,7 +304,7 @@ func TestSession_SearchGroup(t *testing.T) {
 		{"normal search",
 			fields{ldapConfig: ldapConfig},
 			args{baseDN: "dc=example,dc=com", filter: "objectClass=groupOfNames", groupName: "harbor_users", groupNameAttribute: "cn"},
-			[]models.LdapGroup{models.LdapGroup{GroupName: "harbor_users", GroupDN: "cn=harbor_users,ou=groups,dc=example,dc=com"}}, false},
+			[]models.LdapGroup{{GroupName: "harbor_users", GroupDN: "cn=harbor_users,ou=groups,dc=example,dc=com"}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -334,6 +321,69 @@ func TestSession_SearchGroup(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Session.SearchGroup() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSession_SearchGroupByDN(t *testing.T) {
+	ldapConfig := models.LdapConf{
+		LdapURL:            adminServerLdapTestConfig[common.LDAPURL].(string) + ":389",
+		LdapSearchDn:       adminServerLdapTestConfig[common.LDAPSearchDN].(string),
+		LdapScope:          2,
+		LdapSearchPassword: adminServerLdapTestConfig[common.LDAPSearchPwd].(string),
+		LdapBaseDn:         adminServerLdapTestConfig[common.LDAPBaseDN].(string),
+	}
+	ldapGroupConfig := models.LdapGroupConf{
+		LdapGroupBaseDN:        "ou=group,dc=example,dc=com",
+		LdapGroupFilter:        "objectclass=groupOfNames",
+		LdapGroupNameAttribute: "cn",
+		LdapGroupSearchScope:   2,
+	}
+	type fields struct {
+		ldapConfig      models.LdapConf
+		ldapGroupConfig models.LdapGroupConf
+		ldapConn        *goldap.Conn
+	}
+	type args struct {
+		groupDN string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []models.LdapGroup
+		wantErr bool
+	}{
+		{"normal search",
+			fields{ldapConfig: ldapConfig, ldapGroupConfig: ldapGroupConfig},
+			args{groupDN: "cn=harbor_users,ou=groups,dc=example,dc=com"},
+			[]models.LdapGroup{{GroupName: "harbor_users", GroupDN: "cn=harbor_users,ou=groups,dc=example,dc=com"}}, false},
+		{"search non-exist group",
+			fields{ldapConfig: ldapConfig, ldapGroupConfig: ldapGroupConfig},
+			args{groupDN: "cn=harbor_non_users,ou=groups,dc=example,dc=com"},
+			nil, true},
+		{"search invalid group dn",
+			fields{ldapConfig: ldapConfig, ldapGroupConfig: ldapGroupConfig},
+			args{groupDN: "random string"},
+			nil, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			session := &Session{
+				ldapConfig:      tt.fields.ldapConfig,
+				ldapGroupConfig: tt.fields.ldapGroupConfig,
+				ldapConn:        tt.fields.ldapConn,
+			}
+			session.Open()
+			defer session.Close()
+			got, err := session.SearchGroupByDN(tt.args.groupDN)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Session.SearchGroupByDN() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Session.SearchGroupByDN() = %v, want %v", got, tt.want)
 			}
 		})
 	}

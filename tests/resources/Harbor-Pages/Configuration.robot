@@ -1,4 +1,4 @@
-# Copyright 2016-2017 VMware, Inc. All Rights Reserved.
+# Copyright Project Harbor Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ Init LDAP
     Sleep  1
     Capture Page Screenshot
     Disable Ldap Verify Cert Checkbox
-    Click Element  xpath=${config_save_button_xpath}
+    Click Element  xpath=${config_auth_save_button_xpath}
     Sleep  2
     Click Element  xpath=/html/body/harbor-app/harbor-shell/clr-main-container/div/div/config/div/div/div/button[3]
     Sleep  1
@@ -92,23 +92,26 @@ Ldap Verify Cert Checkbox Should Be Disabled
 
 Set Pro Create Admin Only	
     #set limit to admin only
-    Sleep  2
     Click Element  xpath=${configuration_xpath}
+    Sleep  2
+    Click Element  xpath=${system_config_xpath}
     Sleep  1
     Click Element  xpath=//select[@id="proCreation"]
     Click Element  xpath=//select[@id="proCreation"]//option[@value="adminonly"]
     Sleep  1
-    Click Element  xpath=${config_save_button_xpath}
+    Click Element  xpath=${config_system_save_button_xpath}
     Capture Page Screenshot  AdminCreateOnly.png
 
-Set Pro Create Every One	
-    #set limit to Every One
+Set Pro Create Every One
     Click Element  xpath=${configuration_xpath}
+    sleep  1
+    #set limit to Every One
+    Click Element  xpath=${system_config_xpath}
     Sleep  1
     Click Element  xpath=//select[@id="proCreation"]
     Click Element  xpath=//select[@id="proCreation"]//option[@value="everyone"]
     Sleep  1	
-    Click Element  xpath=${config_save_button_xpath}
+    Click Element  xpath=${config_system_save_button_xpath}
     Sleep  2
     Capture Page Screenshot  EveryoneCreate.png
 
@@ -118,7 +121,7 @@ Disable Self Reg
     Mouse Up  xpath=${self_reg_xpath}
     Sleep  1
     Self Reg Should Be Disabled
-    Click Element  xpath=${config_save_button_xpath}
+    Click Element  xpath=${config_auth_save_button_xpath}
     Capture Page Screenshot  DisableSelfReg.png
     Sleep  1
 
@@ -127,7 +130,7 @@ Enable Self Reg
     Mouse Up  xpath=${self_reg_xpath}
     Sleep  1
     Self Reg Should Be Enabled
-    Click Element  xpath=${config_save_button_xpath}
+    Click Element  xpath=${config_auth_save_button_xpath}
     Capture Page Screenshot  EnableSelfReg.png
     Sleep  1
 
@@ -147,12 +150,11 @@ Project Creation Should Not Display
 Switch To System Settings
     Sleep  1
     Click Element  xpath=${configuration_xpath}
-    Click Element  xpath=//*[@id="config-system"]
-
+    Click Element  xpath=${system_config_xpath}
 Modify Token Expiration
     [Arguments]  ${minutes}
     Input Text  xpath=//*[@id="tokenExpiration"]  ${minutes}
-    Click Button  xpath=${config_save_button_xpath} 
+    Click Button  xpath=${config_system_save_button_xpath} 
     Sleep  1
 
 Token Must Be Match
@@ -195,7 +197,7 @@ Config Email
     Mouse Down  xpath=//*[@id="clr-checkbox-emailInsecure"]
     Mouse Up  xpath=//*[@id="clr-checkbox-emailInsecure"]
     Sleep  1
-    Click Element  xpath=${config_save_button_xpath}
+    Click Element  xpath=${config_email_save_button_xpath}
     Sleep  6
 
 Verify Email
@@ -210,13 +212,13 @@ Set Scan All To None
     click element  //vulnerability-config//select
     click element  //vulnerability-config//select/option[@value='none']
     sleep  1
-    click element  ${config_save_button_xpath}
+    click element  ${vulnerbility_save_button_xpath}
 
 Set Scan All To Daily
     click element  //vulnerability-config//select
     click element  //vulnerability-config//select/option[@value='daily']
     sleep  1
-    click element  ${config_save_button_xpath}
+    click element  ${vulnerbility_save_button_xpath}
 
 Click Scan Now
     click element  //vulnerability-config//button[contains(.,'SCAN')]
@@ -244,11 +246,9 @@ Create New Labels
     Sleep  1
     Input Text  xpath=//*[@id="name"]  ${labelname}
     Sleep  1
-    Click Element  xpath=//hbr-create-edit-label//div[@class='colorDrop']//clr-icon
+    Click Element  xpath=//hbr-create-edit-label//clr-dropdown/clr-icon
     Sleep  1
-    Click Element  xpath=//hbr-create-edit-label//div[@class='colorDrop']//div[@class='colorPanel']//span[1]
-    Sleep  1
-    Click Element  //hbr-create-edit-label//div[@class='colorDrop']//div[@class='colorPanel']/a[@class='closePanel']
+    Click Element  xpath=//hbr-create-edit-label//clr-dropdown-menu/label[1]
     Sleep  1
     Input Text  xpath=//*[@id="description"]  global
     Click Element  xpath=//div/form/section/label[4]/button[2]
@@ -257,7 +257,7 @@ Create New Labels
 
 Update A Label
     [Arguments]  ${labelname}
-    Click Element  xpath=//clr-dg-row[1]/div/clr-dg-cell[1]/clr-checkbox
+    Click Element  xpath=//clr-dg-row[contains(.,'${labelname}')]//clr-checkbox
     Sleep  1
     Click Element  xpath=//button[contains(.,'Edit')]
     Sleep  1
@@ -268,10 +268,27 @@ Update A Label
     Wait Until Page Contains  ${labelname}1
 
 Delete A Label
-    Click Element  xpath=//clr-dg-row[1]/div/clr-dg-cell[1]/clr-checkbox
+    [Arguments]  ${labelname}
+    Click Element  xpath=//clr-dg-row[contains(.,'${labelname}')]//clr-checkbox
     Sleep  1
     Click ELement  xpath=//button[contains(.,'Delete')]
     Sleep  3
     Capture Page Screenshot
     Click Element  xpath=//clr-modal//div//button[contains(.,'DELETE')]
-    Wait Until Page Contains  Deleted successfully
+    Wait Until Page Contains Element  //clr-tab-content//div[contains(.,'${labelname}')]/../div/clr-icon[@shape="success-standard"]
+
+## Garbage Collection	
+Switch To Garbage Collection
+    Sleep  1
+    Click Element  xpath=${configuration_xpath}
+    Wait Until Page Contains Element  ${garbage_collection_xpath} 
+    Click Element  xpath=${garbage_collection_xpath}
+
+Click GC Now
+    Sleep  1
+    Click Element  xpath=${gc_now_xpath}
+    Sleep  2
+
+View GC Details
+    Click Element  xpath=${gc_log_details_xpath}
+    Sleep  2

@@ -1,19 +1,17 @@
 version: '2'
 services:
   registry:
-    image: vmware/registry-photon:__reg_version__
+    image: goharbor/registry-photon:__reg_version__
     restart: always
     volumes:
       - /data/registry:/storage
       - ./common/config/registry/:/etc/registry/
-    environment:
-      - GODEBUG=netdns=cgo
     ports:
       - 5000:5000
     command:
       ["serve", "/etc/registry/config.yml"]
   postgres:
-    image: vmware/harbor-db:__version__
+    image: goharbor/harbor-db:__version__
     restart: always
     volumes:
       - /data/database:/var/lib/postgresql/data:z
@@ -22,9 +20,7 @@ services:
     ports:
       - 5432:5432
   adminserver:
-    build:
-      context: ../
-      dockerfile: make/dev/adminserver/Dockerfile
+    image: goharbor/harbor-adminserver:__version__
     env_file:
       - ./common/config/adminserver/env
     restart: always
@@ -35,7 +31,7 @@ services:
     ports:
       - 8888:8080
   redis:
-    image: vmware/redis-photon:4.0
+    image: goharbor/redis-photon:4.0
     restart: always
     volumes:
       - /data/redis:/data

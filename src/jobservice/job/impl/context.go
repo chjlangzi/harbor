@@ -1,4 +1,16 @@
-// Copyright 2018 The Harbor Authors. All rights reserved.
+// Copyright Project Harbor Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package impl
 
@@ -10,43 +22,47 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/vmware/harbor/src/adminserver/client"
-	"github.com/vmware/harbor/src/common"
-	"github.com/vmware/harbor/src/common/dao"
-	"github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/jobservice/config"
-	"github.com/vmware/harbor/src/jobservice/env"
-	"github.com/vmware/harbor/src/jobservice/job"
-	jlogger "github.com/vmware/harbor/src/jobservice/job/impl/logger"
-	"github.com/vmware/harbor/src/jobservice/logger"
+	"github.com/goharbor/harbor/src/adminserver/client"
+	"github.com/goharbor/harbor/src/common"
+	"github.com/goharbor/harbor/src/common/dao"
+	"github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/jobservice/config"
+	"github.com/goharbor/harbor/src/jobservice/env"
+	"github.com/goharbor/harbor/src/jobservice/job"
+	jlogger "github.com/goharbor/harbor/src/jobservice/job/impl/logger"
+	"github.com/goharbor/harbor/src/jobservice/logger"
+	jmodel "github.com/goharbor/harbor/src/jobservice/models"
 )
 
 const (
 	maxRetryTimes = 5
 )
 
-//Context ...
+// Context ...
 type Context struct {
-	//System context
+	// System context
 	sysContext context.Context
 
-	//Logger for job
+	// Logger for job
 	logger logger.Interface
 
-	//op command func
+	// op command func
 	opCommandFunc job.CheckOPCmdFunc
 
-	//checkin func
+	// checkin func
 	checkInFunc job.CheckInFunc
 
-	//other required information
+	// launch job
+	launchJobFunc job.LaunchJobFunc
+
+	// other required information
 	properties map[string]interface{}
 
-	//admin server client
+	// admin server client
 	adminClient client.Client
 }
 
-//NewContext ...
+// NewContext ...
 func NewContext(sysCtx context.Context, adminClient client.Client) *Context {
 	return &Context{
 		sysContext:  sysCtx,
@@ -55,7 +71,7 @@ func NewContext(sysCtx context.Context, adminClient client.Client) *Context {
 	}
 }
 
-//Init ...
+// Init ...
 func (c *Context) Init() error {
 	var (
 		counter = 0
@@ -83,8 +99,8 @@ func (c *Context) Init() error {
 	return dao.InitDatabase(db)
 }
 
-//Build implements the same method in env.JobContext interface
-//This func will build the job execution context before running
+// Build implements the same method in env.JobContext interface
+// This func will build the job execution context before running
 func (c *Context) Build(dep env.JobData) (env.JobContext, error) {
 	jContext := &Context{
 		sysContext:  c.sysContext,
@@ -92,14 +108,14 @@ func (c *Context) Build(dep env.JobData) (env.JobContext, error) {
 		properties:  make(map[string]interface{}),
 	}
 
-	//Copy properties
+	// Copy properties
 	if len(c.properties) > 0 {
 		for k, v := range c.properties {
 			jContext.properties[k] = v
 		}
 	}
 
-	//Refresh admin server properties
+	// Refresh admin server properties
 	props, err := c.adminClient.GetCfgs()
 	if err != nil {
 		return nil, err
@@ -108,7 +124,7 @@ func (c *Context) Build(dep env.JobData) (env.JobContext, error) {
 		jContext.properties[k] = v
 	}
 
-	//Init logger here
+	// Init logger here
 	logPath := fmt.Sprintf("%s/%s.log", config.GetLogBasePath(), dep.ID)
 	jContext.logger = jlogger.New(logPath, config.GetLogLevel())
 	if jContext.logger == nil {
@@ -138,21 +154,33 @@ func (c *Context) Build(dep env.JobData) (env.JobContext, error) {
 		return nil, errors.New("failed to inject checkInFunc")
 	}
 
+	if launchJobFunc, ok := dep.ExtraData["launchJobFunc"]; ok {
+		if reflect.TypeOf(launchJobFunc).Kind() == reflect.Func {
+			if funcRef, ok := launchJobFunc.(job.LaunchJobFunc); ok {
+				jContext.launchJobFunc = funcRef
+			}
+		}
+	}
+
+	if jContext.launchJobFunc == nil {
+		return nil, errors.New("failed to inject launchJobFunc")
+	}
+
 	return jContext, nil
 }
 
-//Get implements the same method in env.JobContext interface
+// Get implements the same method in env.JobContext interface
 func (c *Context) Get(prop string) (interface{}, bool) {
 	v, ok := c.properties[prop]
 	return v, ok
 }
 
-//SystemContext implements the same method in env.JobContext interface
+// SystemContext implements the same method in env.JobContext interface
 func (c *Context) SystemContext() context.Context {
 	return c.sysContext
 }
 
-//Checkin is bridge func for reporting detailed status
+// Checkin is bridge func for reporting detailed status
 func (c *Context) Checkin(status string) error {
 	if c.checkInFunc != nil {
 		c.checkInFunc(status)
@@ -163,7 +191,7 @@ func (c *Context) Checkin(status string) error {
 	return nil
 }
 
-//OPCommand return the control operational command like stop/cancel if have
+// OPCommand return the control operational command like stop/cancel if have
 func (c *Context) OPCommand() (string, bool) {
 	if c.opCommandFunc != nil {
 		return c.opCommandFunc()
@@ -172,9 +200,18 @@ func (c *Context) OPCommand() (string, bool) {
 	return "", false
 }
 
-//GetLogger returns the logger
+// GetLogger returns the logger
 func (c *Context) GetLogger() logger.Interface {
 	return c.logger
+}
+
+// LaunchJob launches sub jobs
+func (c *Context) LaunchJob(req jmodel.JobRequest) (jmodel.JobStats, error) {
+	if c.launchJobFunc == nil {
+		return jmodel.JobStats{}, errors.New("nil launch job function")
+	}
+
+	return c.launchJobFunc(req)
 }
 
 func getDBFromConfig(cfg map[string]interface{}) *models.Database {

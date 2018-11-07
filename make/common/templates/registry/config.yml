@@ -5,13 +5,17 @@ log:
     service: registry
 storage:
   cache:
-    layerinfo: inmemory
+    layerinfo: redis
   $storage_provider_info
   maintenance:
     uploadpurging:
       enabled: false
   delete:
     enabled: true
+redis:
+  addr: $redis_host:$redis_port
+  password: $redis_password
+  db: $redis_db_index_reg
 http:
   addr: :5000
   secret: placeholder
@@ -27,7 +31,7 @@ notifications:
   endpoints:
   - name: harbor
     disabled: false
-    url: $ui_url/service/notifications
+    url: $core_url/service/notifications
     timeout: 3000ms
     threshold: 5
     backoff: 1s

@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@
 package local
 
 import (
-	"github.com/vmware/harbor/src/common"
-	"github.com/vmware/harbor/src/common/dao"
-	"github.com/vmware/harbor/src/common/dao/group"
-	"github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/common/utils/log"
-	"github.com/vmware/harbor/src/ui/promgr"
+	"github.com/goharbor/harbor/src/common"
+	"github.com/goharbor/harbor/src/common/dao"
+	"github.com/goharbor/harbor/src/common/dao/group"
+	"github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/core/promgr"
 )
 
 // SecurityContext implements security.Context interface based on database
@@ -184,11 +184,11 @@ func (s *SecurityContext) GetRolesByGroup(projectIDOrName interface{}) []int {
 	var roles []int
 	user := s.user
 	project, err := s.pm.Get(projectIDOrName)
-	//No user, group or project info
+	// No user, group or project info
 	if err != nil || project == nil || user == nil || len(user.GroupList) == 0 {
 		return roles
 	}
-	//Get role by LDAP group
+	// Get role by LDAP group
 	groupDNConditions := group.GetGroupDNQueryCondition(user.GroupList)
 	roles, err = dao.GetRolesByLDAPGroup(project.ProjectID, groupDNConditions)
 	if err != nil {

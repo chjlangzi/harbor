@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,13 +18,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/vmware/harbor/src/common/dao"
-	common_job "github.com/vmware/harbor/src/common/job"
-	job_models "github.com/vmware/harbor/src/common/job/models"
-	common_models "github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/common/utils/log"
-	"github.com/vmware/harbor/src/replication/models"
-	"github.com/vmware/harbor/src/ui/config"
+	"github.com/goharbor/harbor/src/common/dao"
+	common_job "github.com/goharbor/harbor/src/common/job"
+	job_models "github.com/goharbor/harbor/src/common/job/models"
+	common_models "github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/core/config"
+	"github.com/goharbor/harbor/src/replication/models"
 )
 
 // Replication holds information for a replication
@@ -85,21 +85,17 @@ func (d *DefaultReplicator) Replicate(replication *Replication) error {
 					JobKind: common_job.JobKindGeneric,
 				},
 				StatusHook: fmt.Sprintf("%s/service/notifications/jobs/replication/%d",
-					config.InternalUIURL(), id),
+					config.InternalCoreURL(), id),
 			}
 
 			if operation == common_models.RepOpTransfer {
-				url, err := config.ExtEndpoint()
-				if err != nil {
-					return err
-				}
 				job.Name = common_job.ImageTransfer
 				job.Parameters = map[string]interface{}{
 					"repository":            repository,
 					"tags":                  tags,
-					"src_registry_url":      url,
-					"src_registry_insecure": true,
-					//"src_token_service_url":"",
+					"src_registry_url":      config.InternalCoreURL(),
+					"src_registry_insecure": false,
+					"src_token_service_url": config.InternalTokenServiceEndpoint(),
 					"dst_registry_url":      target.URL,
 					"dst_registry_insecure": target.Insecure,
 					"dst_registry_username": target.Username,
@@ -119,6 +115,9 @@ func (d *DefaultReplicator) Replicate(replication *Replication) error {
 
 			uuid, err := d.client.SubmitJob(job)
 			if err != nil {
+				if er := dao.UpdateRepJobStatus(id, common_models.JobError); er != nil {
+					log.Errorf("failed to update the status of job %d: %s", id, er)
+				}
 				return err
 			}
 

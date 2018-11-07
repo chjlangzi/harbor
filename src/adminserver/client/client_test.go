@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/goharbor/harbor/src/common"
+	"github.com/goharbor/harbor/src/common/utils/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/vmware/harbor/src/common"
-	"github.com/vmware/harbor/src/common/utils/test"
 )
 
 var c Client
@@ -68,14 +68,4 @@ func TestResetCfgs(t *testing.T) {
 	if !assert.Nil(t, err, "unexpected error") {
 		return
 	}
-}
-
-func TestCapacity(t *testing.T) {
-	capacity, err := c.Capacity()
-	if !assert.Nil(t, err, "unexpected error") {
-		return
-	}
-
-	assert.Equal(t, uint64(100), capacity.Total)
-	assert.Equal(t, uint64(90), capacity.Free)
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,19 +17,21 @@ package systemcfg
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
-	enpt "github.com/vmware/harbor/src/adminserver/systemcfg/encrypt"
-	"github.com/vmware/harbor/src/adminserver/systemcfg/store"
-	"github.com/vmware/harbor/src/adminserver/systemcfg/store/database"
-	"github.com/vmware/harbor/src/adminserver/systemcfg/store/encrypt"
-	"github.com/vmware/harbor/src/adminserver/systemcfg/store/json"
-	"github.com/vmware/harbor/src/common"
-	comcfg "github.com/vmware/harbor/src/common/config"
-	"github.com/vmware/harbor/src/common/dao"
-	"github.com/vmware/harbor/src/common/models"
-	"github.com/vmware/harbor/src/common/utils/log"
+	enpt "github.com/goharbor/harbor/src/adminserver/systemcfg/encrypt"
+	"github.com/goharbor/harbor/src/adminserver/systemcfg/store"
+	"github.com/goharbor/harbor/src/adminserver/systemcfg/store/database"
+	"github.com/goharbor/harbor/src/adminserver/systemcfg/store/encrypt"
+	"github.com/goharbor/harbor/src/adminserver/systemcfg/store/json"
+	"github.com/goharbor/harbor/src/common"
+	comcfg "github.com/goharbor/harbor/src/common/config"
+	"github.com/goharbor/harbor/src/common/dao"
+	"github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/common/utils"
+	"github.com/goharbor/harbor/src/common/utils/log"
 )
 
 const (
@@ -145,6 +147,7 @@ var (
 			env:   "CLAIR_DB_PORT",
 			parse: parseStringToInt,
 		},
+		common.ClairDBSSLMode:  "CLAIR_DB_SSLMODE",
 		common.UAAEndpoint:     "UAA_ENDPOINT",
 		common.UAAClientID:     "UAA_CLIENTID",
 		common.UAAClientSecret: "UAA_CLIENTSECRET",
@@ -152,7 +155,7 @@ var (
 			env:   "UAA_VERIFY_CERT",
 			parse: parseStringToBool,
 		},
-		common.UIURL:                       "UI_URL",
+		common.CoreURL:                     "CORE_URL",
 		common.JobServiceURL:               "JOBSERVICE_URL",
 		common.TokenServiceURL:             "TOKEN_SERVICE_URL",
 		common.ClairURL:                    "CLAIR_URL",
@@ -160,6 +163,13 @@ var (
 		common.RegistryStorageProviderName: "REGISTRY_STORAGE_PROVIDER_NAME",
 		common.ReadOnly: &parser{
 			env:   "READ_ONLY",
+			parse: parseStringToBool,
+		},
+		common.ReloadKey:        "RELOAD_KEY",
+		common.LdapGroupAdminDn: "LDAP_GROUP_ADMIN_DN",
+		common.ChartRepoURL:     "CHART_REPOSITORY_URL",
+		common.WithChartMuseum: &parser{
+			env:   "WITH_CHARTMUSEUM",
 			parse: parseStringToBool,
 		},
 	}
@@ -201,6 +211,7 @@ var (
 			env:   "CLAIR_DB_PORT",
 			parse: parseStringToInt,
 		},
+		common.ClairDBSSLMode:  "CLAIR_DB_SSLMODE",
 		common.UAAEndpoint:     "UAA_ENDPOINT",
 		common.UAAClientID:     "UAA_CLIENTID",
 		common.UAAClientSecret: "UAA_CLIENTSECRET",
@@ -209,12 +220,18 @@ var (
 			parse: parseStringToBool,
 		},
 		common.RegistryStorageProviderName: "REGISTRY_STORAGE_PROVIDER_NAME",
-		common.UIURL:                       "UI_URL",
+		common.CoreURL:                     "CORE_URL",
 		common.JobServiceURL:               "JOBSERVICE_URL",
 		common.RegistryURL:                 "REGISTRY_URL",
 		common.TokenServiceURL:             "TOKEN_SERVICE_URL",
 		common.ClairURL:                    "CLAIR_URL",
 		common.NotaryURL:                   "NOTARY_URL",
+		common.DatabaseType:                "DATABASE_TYPE",
+		common.ChartRepoURL:                "CHART_REPOSITORY_URL",
+		common.WithChartMuseum: &parser{
+			env:   "WITH_CHARTMUSEUM",
+			parse: parseStringToBool,
+		},
 	}
 )
 
@@ -241,32 +258,46 @@ func parseStringToBool(str string) (interface{}, error) {
 // Init system configurations. If env RESET is set or configurations
 // read from storage driver is null, load all configurations from env
 func Init() (err error) {
-	if err = initCfgStore(); err != nil {
+	// init database
+	envCfgs := map[string]interface{}{}
+	if err := LoadFromEnv(envCfgs, true); err != nil {
+		return err
+	}
+	db := GetDatabaseFromCfg(envCfgs)
+	if err := dao.InitDatabase(db); err != nil {
+		return err
+	}
+	if err := dao.UpgradeSchema(db); err != nil {
+		return err
+	}
+	if err := dao.CheckSchemaVersion(); err != nil {
 		return err
 	}
 
-	loadAll := false
-	cfgs := map[string]interface{}{}
-
-	if os.Getenv("RESET") == "true" {
-		log.Info("RESET is set, will load all configurations from environment variables")
-		loadAll = true
-	}
-
-	if !loadAll {
-		cfgs, err = CfgStore.Read()
-		if cfgs == nil {
-			log.Info("configurations read from storage driver are null, will load them from environment variables")
-			loadAll = true
-			cfgs = map[string]interface{}{}
-		}
-	}
-
-	if err = LoadFromEnv(cfgs, loadAll); err != nil {
+	if err := initCfgStore(); err != nil {
 		return err
 	}
 
-	return CfgStore.Write(cfgs)
+	// Use reload key to avoid reset customed setting after restart
+	curCfgs, err := CfgStore.Read()
+	if err != nil {
+		return err
+	}
+	loadAll := isLoadAll(curCfgs)
+	if curCfgs == nil {
+		curCfgs = map[string]interface{}{}
+	}
+	// restart: only repeatload envs will be load
+	// reload_config: all envs will be reload except the skiped envs
+	if err = LoadFromEnv(curCfgs, loadAll); err != nil {
+		return err
+	}
+	AddMissedKey(curCfgs)
+	return CfgStore.Write(curCfgs)
+}
+
+func isLoadAll(cfg map[string]interface{}) bool {
+	return cfg == nil || strings.EqualFold(os.Getenv("RESET"), "true") && os.Getenv("RELOAD_KEY") != cfg[common.ReloadKey]
 }
 
 func initCfgStore() (err error) {
@@ -282,20 +313,11 @@ func initCfgStore() (err error) {
 	log.Infof("the path of json configuration storage: %s", path)
 
 	if drivertype == common.CfgDriverDB {
-		//init database
-		cfgs := map[string]interface{}{}
-		if err = LoadFromEnv(cfgs, true); err != nil {
-			return err
-		}
-		cfgdb := GetDatabaseFromCfg(cfgs)
-		if err = dao.InitDatabase(cfgdb); err != nil {
-			return err
-		}
 		CfgStore, err = database.NewCfgStore()
 		if err != nil {
 			return err
 		}
-		//migration check: if no data in the db , then will try to load from path
+		// migration check: if no data in the db , then will try to load from path
 		m, err := CfgStore.Read()
 		if err != nil {
 			return err
@@ -316,7 +338,6 @@ func initCfgStore() (err error) {
 				// only used when migrating harbor release before v1.3
 				// after v1.3 there is always a db configuration before migrate.
 				validLdapScope(jsonconfig, true)
-
 				err = CfgStore.Write(jsonconfig)
 				if err != nil {
 					log.Error("Failed to update old configuration to database")
@@ -362,13 +383,31 @@ func LoadFromEnv(cfgs map[string]interface{}, all bool) error {
 		}
 	}
 
+	reloadCfg := os.Getenv("RESET")
+	skipPattern := os.Getenv("SKIP_RELOAD_ENV_PATTERN")
+	skipPattern = strings.TrimSpace(skipPattern)
+	if len(skipPattern) == 0 {
+		skipPattern = "$^" // doesn't match any string by default
+	}
+	skipMatcher, err := regexp.Compile(skipPattern)
+	if err != nil {
+		log.Errorf("Regular express parse error, skipPattern:%v", skipPattern)
+		skipMatcher = regexp.MustCompile("$^")
+	}
+
 	for k, v := range envs {
 		if str, ok := v.(string); ok {
+			if skipMatcher.MatchString(str) && strings.EqualFold(reloadCfg, "true") {
+				continue
+			}
 			cfgs[k] = os.Getenv(str)
 			continue
 		}
 
 		if parser, ok := v.(*parser); ok {
+			if skipMatcher.MatchString(parser.env) && strings.EqualFold(reloadCfg, "true") {
+				continue
+			}
 			i, err := parser.parse(os.Getenv(parser.env))
 			if err != nil {
 				return err
@@ -388,11 +427,12 @@ func GetDatabaseFromCfg(cfg map[string]interface{}) *models.Database {
 	database := &models.Database{}
 	database.Type = cfg[common.DatabaseType].(string)
 	postgresql := &models.PostGreSQL{}
-	postgresql.Host = cfg[common.PostGreSQLHOST].(string)
-	postgresql.Port = int(cfg[common.PostGreSQLPort].(int))
-	postgresql.Username = cfg[common.PostGreSQLUsername].(string)
-	postgresql.Password = cfg[common.PostGreSQLPassword].(string)
-	postgresql.Database = cfg[common.PostGreSQLDatabase].(string)
+	postgresql.Host = utils.SafeCastString(cfg[common.PostGreSQLHOST])
+	postgresql.Port = int(utils.SafeCastInt(cfg[common.PostGreSQLPort]))
+	postgresql.Username = utils.SafeCastString(cfg[common.PostGreSQLUsername])
+	postgresql.Password = utils.SafeCastString(cfg[common.PostGreSQLPassword])
+	postgresql.Database = utils.SafeCastString(cfg[common.PostGreSQLDatabase])
+	postgresql.SSLMode = utils.SafeCastString(cfg[common.PostGreSQLSSLMode])
 	database.PostGreSQL = postgresql
 	return database
 }
@@ -416,5 +456,28 @@ func validLdapScope(cfg map[string]interface{}, isMigrate bool) {
 		ldapScope = 0
 	}
 	cfg[ldapScopeKey] = ldapScope
+
+}
+
+// AddMissedKey ... If the configure key is missing in the cfg map, add default value to it
+func AddMissedKey(cfg map[string]interface{}) {
+
+	for k, v := range common.HarborStringKeysMap {
+		if _, exist := cfg[k]; !exist {
+			cfg[k] = v
+		}
+	}
+
+	for k, v := range common.HarborNumKeysMap {
+		if _, exist := cfg[k]; !exist {
+			cfg[k] = v
+		}
+	}
+
+	for k, v := range common.HarborBoolKeysMap {
+		if _, exist := cfg[k]; !exist {
+			cfg[k] = v
+		}
+	}
 
 }

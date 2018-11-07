@@ -1,4 +1,16 @@
-// Copyright 2018 The Harbor Authors. All rights reserved.
+// Copyright Project Harbor Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package logger
 
@@ -6,15 +18,15 @@ import (
 	"log"
 )
 
-//sLogger is used to log for workerpool itself
+// sLogger is used to log for workerpool itself
 var sLogger Interface
 
-//SetLogger sets the logger implementation
+// SetLogger sets the logger implementation
 func SetLogger(logger Interface) {
 	sLogger = logger
 }
 
-//Debug ...
+// Debug ...
 func Debug(v ...interface{}) {
 	if sLogger != nil {
 		sLogger.Debug(v...)
@@ -24,7 +36,7 @@ func Debug(v ...interface{}) {
 	log.Println(v...)
 }
 
-//Debugf for debuging with format
+// Debugf for debuging with format
 func Debugf(format string, v ...interface{}) {
 	if sLogger != nil {
 		sLogger.Debugf(format, v...)
@@ -34,7 +46,7 @@ func Debugf(format string, v ...interface{}) {
 	log.Printf(format, v...)
 }
 
-//Info ...
+// Info ...
 func Info(v ...interface{}) {
 	if sLogger != nil {
 		sLogger.Info(v...)
@@ -44,7 +56,7 @@ func Info(v ...interface{}) {
 	log.Println(v...)
 }
 
-//Infof for logging info with format
+// Infof for logging info with format
 func Infof(format string, v ...interface{}) {
 	if sLogger != nil {
 		sLogger.Infof(format, v...)
@@ -54,7 +66,7 @@ func Infof(format string, v ...interface{}) {
 	log.Printf(format, v...)
 }
 
-//Warning ...
+// Warning ...
 func Warning(v ...interface{}) {
 	if sLogger != nil {
 		sLogger.Warning(v...)
@@ -64,7 +76,7 @@ func Warning(v ...interface{}) {
 	log.Println(v...)
 }
 
-//Warningf for warning with format
+// Warningf for warning with format
 func Warningf(format string, v ...interface{}) {
 	if sLogger != nil {
 		sLogger.Warningf(format, v...)
@@ -74,7 +86,7 @@ func Warningf(format string, v ...interface{}) {
 	log.Printf(format, v...)
 }
 
-//Error for logging error
+// Error for logging error
 func Error(v ...interface{}) {
 	if sLogger != nil {
 		sLogger.Error(v...)
@@ -84,7 +96,7 @@ func Error(v ...interface{}) {
 	log.Println(v...)
 }
 
-//Errorf for logging error with format
+// Errorf for logging error with format
 func Errorf(format string, v ...interface{}) {
 	if sLogger != nil {
 		sLogger.Errorf(format, v...)
@@ -94,7 +106,7 @@ func Errorf(format string, v ...interface{}) {
 	log.Printf(format, v...)
 }
 
-//Fatal ...
+// Fatal ...
 func Fatal(v ...interface{}) {
 	if sLogger != nil {
 		sLogger.Fatal(v...)
@@ -104,7 +116,7 @@ func Fatal(v ...interface{}) {
 	log.Fatal(v...)
 }
 
-//Fatalf for fatal error with error
+// Fatalf for fatal error with error
 func Fatalf(format string, v ...interface{}) {
 	if sLogger != nil {
 		sLogger.Fatalf(format, v...)

@@ -1,26 +1,43 @@
-// Copyright 2018 The Harbor Authors. All rights reserved.
+// Copyright Project Harbor Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package runtime
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
 
-	"github.com/garyburd/redigo/redis"
-	"github.com/vmware/harbor/src/common/job"
-	"github.com/vmware/harbor/src/jobservice/api"
-	"github.com/vmware/harbor/src/jobservice/config"
-	"github.com/vmware/harbor/src/jobservice/core"
-	"github.com/vmware/harbor/src/jobservice/env"
-	"github.com/vmware/harbor/src/jobservice/job/impl"
-	"github.com/vmware/harbor/src/jobservice/job/impl/replication"
-	"github.com/vmware/harbor/src/jobservice/job/impl/scan"
-	"github.com/vmware/harbor/src/jobservice/logger"
-	"github.com/vmware/harbor/src/jobservice/pool"
+	"github.com/goharbor/harbor/src/common/job"
+	"github.com/goharbor/harbor/src/jobservice/api"
+	"github.com/goharbor/harbor/src/jobservice/config"
+	"github.com/goharbor/harbor/src/jobservice/core"
+	"github.com/goharbor/harbor/src/jobservice/env"
+	jsjob "github.com/goharbor/harbor/src/jobservice/job"
+	"github.com/goharbor/harbor/src/jobservice/job/impl"
+	"github.com/goharbor/harbor/src/jobservice/job/impl/gc"
+	"github.com/goharbor/harbor/src/jobservice/job/impl/replication"
+	"github.com/goharbor/harbor/src/jobservice/job/impl/scan"
+	"github.com/goharbor/harbor/src/jobservice/logger"
+	"github.com/goharbor/harbor/src/jobservice/models"
+	"github.com/goharbor/harbor/src/jobservice/pool"
+	"github.com/goharbor/harbor/src/jobservice/utils"
+	"github.com/gomodule/redigo/redis"
 )
 
 const (
@@ -30,35 +47,35 @@ const (
 	dialWriteTimeout      = 10 * time.Second
 )
 
-//JobService ...
+// JobService ...
 var JobService = &Bootstrap{}
 
-//Bootstrap is coordinating process to help load and start the other components to serve.
+// Bootstrap is coordinating process to help load and start the other components to serve.
 type Bootstrap struct {
 	jobConextInitializer env.JobContextInitializer
 }
 
-//SetJobContextInitializer set the job context initializer
+// SetJobContextInitializer set the job context initializer
 func (bs *Bootstrap) SetJobContextInitializer(initializer env.JobContextInitializer) {
 	if initializer != nil {
 		bs.jobConextInitializer = initializer
 	}
 }
 
-//LoadAndRun will load configurations, initialize components and then start the related process to serve requests.
-//Return error if meet any problems.
+// LoadAndRun will load configurations, initialize components and then start the related process to serve requests.
+// Return error if meet any problems.
 func (bs *Bootstrap) LoadAndRun() {
-	//Create the root context
+	// Create the root context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	rootContext := &env.Context{
 		SystemContext: ctx,
 		WG:            &sync.WaitGroup{},
-		ErrorChan:     make(chan error, 1), //with 1 buffer
+		ErrorChan:     make(chan error, 1), // with 1 buffer
 	}
 
-	//Build specified job context
+	// Build specified job context
 	if bs.jobConextInitializer != nil {
 		if jobCtx, err := bs.jobConextInitializer(rootContext); err == nil {
 			rootContext.JobContext = jobCtx
@@ -67,7 +84,7 @@ func (bs *Bootstrap) LoadAndRun() {
 		}
 	}
 
-	//Start the pool
+	// Start the pool
 	var (
 		backendPool pool.Interface
 		wpErr       error
@@ -81,19 +98,25 @@ func (bs *Bootstrap) LoadAndRun() {
 		logger.Fatalf("Worker pool backend '%s' is not supported", config.DefaultConfig.PoolConfig.Backend)
 	}
 
-	//Initialize controller
+	// Initialize controller
 	ctl := core.NewController(backendPool)
-	//Start the API server
+	// Keep the job launch func in the system context
+	var launchJobFunc jsjob.LaunchJobFunc = func(req models.JobRequest) (models.JobStats, error) {
+		return ctl.LaunchJob(req)
+	}
+	rootContext.SystemContext = context.WithValue(rootContext.SystemContext, utils.CtlKeyOfLaunchJobFunc, launchJobFunc)
+
+	// Start the API server
 	apiServer := bs.loadAndRunAPIServer(rootContext, config.DefaultConfig, ctl)
 	logger.Infof("Server is started at %s:%d with %s", "", config.DefaultConfig.Port, config.DefaultConfig.Protocol)
 
-	//Start outdated log files sweeper
+	// Start outdated log files sweeper
 	logSweeper := logger.NewSweeper(ctx, config.GetLogBasePath(), config.GetLogArchivePeriod())
 	logSweeper.Start()
 
-	//To indicate if any errors occurred
+	// To indicate if any errors occurred
 	var err error
-	//Block here
+	// Block here
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM, os.Kill)
 	select {
@@ -101,13 +124,13 @@ func (bs *Bootstrap) LoadAndRun() {
 	case err = <-rootContext.ErrorChan:
 	}
 
-	//Call cancel to send termination signal to other interested parts.
+	// Call cancel to send termination signal to other interested parts.
 	cancel()
 
-	//Gracefully shutdown
+	// Gracefully shutdown
 	apiServer.Stop()
 
-	//In case stop is called before the server is ready
+	// In case stop is called before the server is ready
 	close := make(chan bool, 1)
 	go func() {
 		timer := time.NewTimer(10 * time.Second)
@@ -115,7 +138,7 @@ func (bs *Bootstrap) LoadAndRun() {
 
 		select {
 		case <-timer.C:
-			//Try again
+			// Try again
 			apiServer.Stop()
 		case <-close:
 			return
@@ -133,9 +156,9 @@ func (bs *Bootstrap) LoadAndRun() {
 	logger.Infof("Server gracefully exit")
 }
 
-//Load and run the API server.
+// Load and run the API server.
 func (bs *Bootstrap) loadAndRunAPIServer(ctx *env.Context, cfg *config.Configuration, ctl *core.Controller) *api.Server {
-	//Initialized API server
+	// Initialized API server
 	authProvider := &api.SecretAuthenticator{}
 	handler := api.NewDefaultHandler(ctl)
 	router := api.NewBaseRouter(handler, authProvider)
@@ -149,13 +172,13 @@ func (bs *Bootstrap) loadAndRunAPIServer(ctx *env.Context, cfg *config.Configura
 	}
 
 	server := api.NewServer(ctx, router, serverConfig)
-	//Start processes
+	// Start processes
 	server.Start()
 
 	return server
 }
 
-//Load and run the worker pool
+// Load and run the worker pool
 func (bs *Bootstrap) loadAndRunRedisWorkerPool(ctx *env.Context, cfg *config.Configuration) (pool.Interface, error) {
 	redisPool := &redis.Pool{
 		MaxActive: 6,
@@ -169,25 +192,35 @@ func (bs *Bootstrap) loadAndRunRedisWorkerPool(ctx *env.Context, cfg *config.Con
 				redis.DialWriteTimeout(dialWriteTimeout),
 			)
 		},
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			if time.Since(t) < time.Minute {
+				return nil
+			}
+
+			_, err := c.Do("PING")
+			return err
+		},
 	}
 
 	redisWorkerPool := pool.NewGoCraftWorkPool(ctx,
-		cfg.PoolConfig.RedisPoolCfg.Namespace,
+		fmt.Sprintf("{%s}", cfg.PoolConfig.RedisPoolCfg.Namespace),
 		cfg.PoolConfig.WorkerCount,
 		redisPool)
-	//Register jobs here
+	// Register jobs here
 	if err := redisWorkerPool.RegisterJob(impl.KnownJobDemo, (*impl.DemoJob)(nil)); err != nil {
-		//exit
+		// exit
 		return nil, err
 	}
 	if err := redisWorkerPool.RegisterJobs(
 		map[string]interface{}{
-			job.ImageScanJob:   (*scan.ClairJob)(nil),
-			job.ImageTransfer:  (*replication.Transfer)(nil),
-			job.ImageDelete:    (*replication.Deleter)(nil),
-			job.ImageReplicate: (*replication.Replicator)(nil),
+			job.ImageScanJob:    (*scan.ClairJob)(nil),
+			job.ImageScanAllJob: (*scan.All)(nil),
+			job.ImageTransfer:   (*replication.Transfer)(nil),
+			job.ImageDelete:     (*replication.Deleter)(nil),
+			job.ImageReplicate:  (*replication.Replicator)(nil),
+			job.ImageGC:         (*gc.GarbageCollector)(nil),
 		}); err != nil {
-		//exit
+		// exit
 		return nil, err
 	}
 

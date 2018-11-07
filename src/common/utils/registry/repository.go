@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,8 +30,8 @@ import (
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
 
-	"github.com/vmware/harbor/src/common/utils"
-	registry_error "github.com/vmware/harbor/src/common/utils/error"
+	"github.com/goharbor/harbor/src/common/utils"
+	registry_error "github.com/goharbor/harbor/src/common/utils/error"
 )
 
 // Repository holds information of a repository entity
@@ -258,6 +258,28 @@ func (r *Repository) DeleteManifest(digest string) error {
 	}
 }
 
+// MountBlob ...
+func (r *Repository) MountBlob(digest, from string) error {
+	req, err := http.NewRequest("POST", buildMountBlobURL(r.Endpoint.String(), r.Name, digest, from), nil)
+	req.Header.Set(http.CanonicalHeaderKey("Content-Length"), "0")
+
+	resp, err := r.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode/100 != 2 {
+		defer resp.Body.Close()
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("status %d, body: %s", resp.StatusCode, string(b))
+	}
+
+	return nil
+}
+
 // DeleteTag ...
 func (r *Repository) DeleteTag(tag string) error {
 	digest, exist, err := r.ManifestExist(tag)
@@ -377,7 +399,11 @@ func (r *Repository) initiateBlobUpload(name string) (location, uploadUUID strin
 }
 
 func (r *Repository) monolithicBlobUpload(location, digest string, size int64, data io.Reader) error {
-	req, err := http.NewRequest("PUT", buildMonolithicBlobUploadURL(location, digest), data)
+	url, err := buildMonolithicBlobUploadURL(r.Endpoint.String(), location, digest)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("PUT", url, data)
 	if err != nil {
 		return err
 	}
@@ -458,11 +484,24 @@ func buildBlobURL(endpoint, repoName, reference string) string {
 	return fmt.Sprintf("%s/v2/%s/blobs/%s", endpoint, repoName, reference)
 }
 
+func buildMountBlobURL(endpoint, repoName, digest, from string) string {
+	return fmt.Sprintf("%s/v2/%s/blobs/uploads/?mount=%s&from=%s", endpoint, repoName, digest, from)
+}
+
 func buildInitiateBlobUploadURL(endpoint, repoName string) string {
 	return fmt.Sprintf("%s/v2/%s/blobs/uploads/", endpoint, repoName)
 }
 
-func buildMonolithicBlobUploadURL(location, digest string) string {
+func buildMonolithicBlobUploadURL(endpoint, location, digest string) (string, error) {
+	relative, err := isRelativeURL(location)
+	if err != nil {
+		return "", err
+	}
+	// when the registry enables "relativeurls", the location returned
+	// has no scheme and host part
+	if relative {
+		location = endpoint + location
+	}
 	query := ""
 	if strings.ContainsRune(location, '?') {
 		query = "&"
@@ -470,5 +509,13 @@ func buildMonolithicBlobUploadURL(location, digest string) string {
 		query = "?"
 	}
 	query += fmt.Sprintf("digest=%s", digest)
-	return fmt.Sprintf("%s%s", location, query)
+	return fmt.Sprintf("%s%s", location, query), nil
+}
+
+func isRelativeURL(endpoint string) (bool, error) {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return false, err
+	}
+	return !u.IsAbs(), nil
 }

@@ -16,12 +16,16 @@ This guide walks you through the fundamentals of using Harbor. You'll learn how 
   * [Manage self-registration.](#managing-self-registration)
   * [Manage email settings.](#managing-email-settings)
   * [Manage registry read only.](#managing-registry-read-only)
+  * [Manage role by LDAP group.](#managing-role-by-ldap-group)
 * [Pull and push images using Docker client.](#pulling-and-pushing-images-using-docker-client)
 * [Add description to repositories](#add-description-to-repositories)
 * [Delete repositories and images.](#deleting-repositories)
 * [Content trust.  ](#content-trust)
 * [Vulnerability scanning via Clair.](#vulnerability-scanning-via-clair)
 * [Pull image from Harbor in Kubernetes.](#pull-image-from-harbor-in-kubernetes)
+* [Manage Helm Charts](#manage-helm-charts)
+  * [Manage Helm Charts via portal](#manage-helm-charts-via-portal)
+  * [Working with Helm CLI](#working-with-helm-cli)
 
 ## Role Based Access Control(RBAC)  
 
@@ -37,8 +41,6 @@ Besides the above three roles, there are two system-wide roles:
 
 * **SysAdmin**: "SysAdmin" has the most privileges. In addition to the privileges mentioned above, "SysAdmin" can also list all projects, set an ordinary user as administrator, delete users and set vulnerability scan policy for all images. The public project "library" is also owned by the administrator.  
 * **Anonymous**: When a user is not logged in, the user is considered as an "Anonymous" user. An anonymous user has no access to private projects and has read-only access to public projects.  
-
-**Video demo:** ![RBAC](img/demos/rbac.png) [youtube](https://www.youtube.com/watch?v=2ZIu9XTvsC0) , [Tencent Video](https://v.qq.com/x/page/l0553yw19ek.html)
 
 ## User account
 Harbor supports two authentication modes:  
@@ -80,7 +82,7 @@ After the project is created, you can browse repositories, members, logs, replic
 
 ![browse project](img/new_browse_project.png)
 
-There are two views to show repositories, listview, and cardview, you can switch between them by click correspond icon.
+There are two views to show repositories, list view and card view, you can switch between them by clicking the corresponding icon.
 
 ![browse repositories](img/browse_project_repositories.png)
 
@@ -109,28 +111,29 @@ You can add members with different roles to an existing project. You can add a L
 ![browse project](img/new_add_member.png)
 
 ### Updating and removing members
-You can check one or more members, then click `MEMBER ACTION`, choose one role to batch switch checked members's roles. You can also click `MEMBER.REMOVE` to batch remove checked members.
+You can check one or more members, then click `ACTION`, choose one role to batch switch checked members' roles or remove them from the project.
 
 ![browse project](img/new_remove_update_member.png)
 
 ## Replicating images  
 Images replication is used to replicate repositories from one Harbor instance to another.
 
-The function is project-oriented, and once the system administrator set a rule to one project, all repositories under the project that match the defined [filter](#image-filter) patterns will be replicated to the remote registry when the [triggering condition](#trigger-mode) is triggered. Each repository will start a job to run. If the project does not exist on the remote registry, a new project will be created automatically, but if it already exists and the user configured in policy has no write privilege to it, the process will fail. The member information will not be replicated.  
+The function is project-oriented, and once the system administrator has set a rule to one project, all repositories under the project that match the defined [filter](#image-filter) patterns will be replicated to the remote registry when the [triggering condition](#trigger-mode) is triggered. Each repository will start a job to run. If the project does not exist on the remote registry, a new project will be created automatically. If it already exists and the user configured in policy has no write privilege to it, the process will fail. The member information will not be replicated.  
 
-There may be a bit of delay during replication according to the situation of the network. If replication job fails due to the network issue, the job will be re-scheduled a few minutes later and the schedule will keep trying until the network issue resolved.  
+There may be a bit of delay during replication based on the situation of the network. If replication job fails due to the network issue, the job will be re-scheduled a few minutes later and the schedule will keep trying until the network issue is resolved.  
 
-**Note:** The replication feature is incompatible between Harbor instance before version 0.3.5(included) and after version 0.3.5. 
+**Note:** Due to API changes, replication between different versions of Harbor may be broken.
 
 ### Creating a replication rule
 Replication can be configured by creating a rule. Click `NEW REPLICATION RULE` under `Administration->Replications` and fill in the necessary fields. You can choose different image filters and trigger modes according to the different requirements. If there is no endpoint available in the list, you need to create one. Click `SAVE` to create a replication rule for the selected project. If `Replicate existing images immediately` is chosen, the existing images under the project will be replicated to the remote registry immediately.  
 
 #### Image filter
-Two image filters are supported:
+Three image filters are supported:
 * **Repository**: Filter images according to the repository part of image name.
 * **Tag**: Filter images according to the tag part of image name.
+* **Label**: Filter images according to the [labels](#managing-labels). **Notes**: If the labels referenced by a rule are deleted, the rule's status will be set to `Disabled`. You need to edit and update it according to the tips.
 
-Two terms are supported in filter pattern:
+Two terms are supported in the pattern used by repository filter and tag filter:
 * **\***: Matches any sequence of non-separator characters `/`.
 * **?**: Matches any single non-separator character `/`.
 
@@ -233,26 +236,29 @@ You can change Harbor's registry read only settings, read only mode will allow '
 If it set to true, deleting repository, tag and pushing image will be disabled. 
 ![browse project](img/read_only_enable.png)
 
+
 ```
 $ docker push 10.117.169.182/demo/ubuntu:14.04  
 The push refers to a repository [10.117.169.182/demo/ubuntu]
 0271b8eebde3: Preparing 
 denied: The system is in read only mode. Any modification is prohibited.  
-``` 
+```
+### Managing role by LDAP group
+
+If auth_mode is ldap_auth, you can manage project role by LDAP/AD group. please refer [manage role by ldap group guide](manage_role_by_ldap_group.md).
 
 ## Pulling and pushing images using Docker client  
 
 **NOTE: Harbor only supports Registry V2 API. You need to use Docker client 1.6.0 or higher.**  
 
 Harbor supports HTTP by default and Docker client tries to connect to Harbor using HTTPS first, so if you encounter an error as below when you pull or push images, you need to configure insecure registry. Please, read [this document](https://docs.docker.com/registry/insecure/) in order to understand how to do this. 
-  
+
 
 ```Error response from daemon: Get https://myregistrydomain.com/v1/users/: dial tcp myregistrydomain.com:443 getsockopt: connection refused.```   
-  
 
 If this private registry supports only HTTP or HTTPS with an unknown CA certificate, please add   
 `--insecure-registry myregistrydomain.com` to the daemon's start up arguments.  
-  
+
 
 In the case of HTTPS, if you have access to the registry's CA certificate, simply place the CA certificate at /etc/docker/certs.d/myregistrydomain.com/ca.crt .   
 
@@ -262,7 +268,7 @@ If the project that the image belongs to is private, you should sign in first:
 ```sh
 $ docker login 10.117.169.182  
 ```
-  
+
 You can now pull the image:  
 
 ```sh
@@ -279,18 +285,18 @@ First, log in from Docker client:
 ```sh
 $ docker login 10.117.169.182  
 ```
-  
+
 Tag the image:  
 
 ```sh
 $ docker tag ubuntu:14.04 10.117.169.182/demo/ubuntu:14.04  
-``` 
+```
 
 Push the image:
 
 ```sh
 $ docker push 10.117.169.182/demo/ubuntu:14.04  
-```  
+```
 
 **Note: Replace "10.117.169.182" with the IP address or domain name of your Harbor node.**
 
@@ -298,14 +304,15 @@ $ docker push 10.117.169.182/demo/ubuntu:14.04
 
 After pushing an image, an Information can be added by project admin to describe this repository.
 
-First, go into the repository and select the "Info" tab.
-
-![select info tab](img/select_info_tab.png)
-
-Next, click the "EDIT" button, an textarea will appear and enter description here. Click "SAVE" button to save this information.
+Go into the repository and select the "Info" tab, and click the "EDIT" button.  An textarea will appear and enter description here. Click "SAVE" button to save this information.
 
 ![edit info](img/edit_description.png)
 
+### Download the harbor certs
+
+Users  can click the "registry certificate" link to download the registry certificate.
+
+![browse project](img/download_harbor_certs.png)
 
 ###  Deleting repositories  
 
@@ -326,19 +333,19 @@ Run the below commands on the host which Harbor is deployed on to preview what f
 ```sh
 $ docker-compose stop
 
-$ docker run -it --name gc --rm --volumes-from registry vmware/registry:2.6.2-photon garbage-collect --dry-run /etc/registry/config.yml
+$ docker run -it --name gc --rm --volumes-from registry goharbor/registry:2.6.2-photon garbage-collect --dry-run /etc/registry/config.yml
 
-```  
+```
 **NOTE:** The above option "--dry-run" will print the progress without removing any data.  
 
 Verify the result of the above test, then use the below commands to perform garbage collection and restart Harbor. 
 
 ```sh
 
-$ docker run -it --name gc --rm --volumes-from registry vmware/registry:2.6.2-photon garbage-collect  /etc/registry/config.yml
+$ docker run -it --name gc --rm --volumes-from registry goharbor/registry:2.6.2-photon garbage-collect  /etc/registry/config.yml
 
 $ docker-compose start
-```  
+```
 
 For more information about GC, please see [GC](https://github.com/docker/docker.github.io/blob/master/registry/garbage-collection.md).  
 
@@ -354,12 +361,10 @@ The root key is generated at: ``/root/.docker/trust/private/root_keys``
 You will also be asked to enter a new passphrase for the image. This is generated at ``/root/.docker/trust/private/tuf_keys/[registry name] /[imagepath]``.  
 If you are using a self-signed cert, make sure to copy the CA cert into ```/etc/docker/certs.d/10.117.169.182``` and ```$HOME/.docker/tls/10.117.169.182:4443/```. When an image is signed, it is indicated in the Web UI.  
 **Note: Replace "10.117.169.182" with the IP address or domain name of your Harbor node. In order to use content trust, HTTPS must be enabled in Harbor.**  
-  
+
 
 When an image is signed, it has a tick shown in UI; otherwise, a cross sign(X) is displayed instead.  
 ![browse project](img/content_trust.png)
-
-**Video demo:** ![content trust](img/demos/content_trust.png) [youtube](https://www.youtube.com/watch?v=pPklSTJZY2E) , [Tencent Video](https://v.qq.com/x/page/n0553fzzrnf.html)
 
 ### Vulnerability scanning via Clair 
 **CAUTION: Clair is an optional component, please make sure you have already installed it in your Harbor instance before you go through this section.**
@@ -379,8 +384,8 @@ Once the database is ready, an overall database updated timestamp will be shown 
 
 **Scanning an image** 
 
-Enter your project and locate the specified repository. Expand the tag list via clicking the arrow icon on the left side. For each tag there will be an 'Vulnerability' column to display vulnerability scanning status and related information. You can click on the vertical ellipsis to open a popup menu and then click on 'Scan' to start the vulnerability analysis process. 
-![browse project](img/scan_menu_item.png)
+Enter your project, select the repository. For each tag there will be an 'Vulnerability' column to display vulnerability scanning status and related information. You can select the image and click the "SCAN" button to trigger the vulnerability scan process. 
+![browse project](img/scan_image.png)
 **NOTES: Only the users with 'Project Admin' role have the privilege to launch the analysis process.**
 
 The analysis process may have the following status that are indicated in the 'Vulnerability' column:
@@ -429,10 +434,121 @@ You can set policies to control the vulnerability analysis process. Currently, t
 
 **NOTES: Once the scheduled job is executed, the completion time of scanning all images will be updated accordingly. Please be aware that the completion time of the images may be different because the execution of analysis for each image may be carried out at different time.**
 
-**Video demo:** ![vulnerability scanning](img/demos/vul_scan.png) [youtube](https://www.youtube.com/watch?v=K4tJ6B2cGR4) , [Tencent Video](https://v.qq.com/x/page/s0553k9692d.html)
-
 ### Pull image from Harbor in Kubernetes
 Kubernetes users can easily deploy pods with images stored in Harbor.  The settings are similar to that of another private registry.  There are two major issues:
 
 1. When your Harbor instance is hosting http and the certificate is self signed.  You need to modify daemon.json on each work node of your cluster, for details please refer to: https://docs.docker.com/registry/insecure/#deploy-a-plain-http-registry
 2. If your pod references an image under private project, you need to create a secret with the credentials of user who has permission to pull image from this project, for details refer to: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+
+## Manage Helm Charts
+[Helm](https://helm.sh) is a package manager for [Kubernetes](https://kubernetes.io). Helm uses a packaging format called [charts](https://docs.helm.sh/developing_charts). Since version 1.6.0 Harbor is now a composite cloud-native registry which supports both container image management and Helm charts management. Access to Helm charts in Harbor is controlled by [role-based access controls (RBAC)](https://en.wikipedia.org/wiki/Role-based_access_control) and is restricted by projects.
+
+### Manage Helm Charts via portal
+#### List charts
+Click your project to enter the project detail page after successful logging in. The existing helm charts will be listed under the tab `Helm Charts` which is beside the image `Repositories` tab with the following information:
+* Name of helm chart
+* The status of the chart: Active or Deprecated
+* The count of chart versions
+* The created time of the chart
+
+![list charts](img/chartrepo/list_charts.png)
+
+You can click the icon buttons on the top right to switch views between card view and list view.
+
+#### Upload new chart
+Click the `UPLOAD` button on the top left to open the chart uploading dialog. Choose the uploading chart from your filesystem. Click the `UPLOAD` button to upload it to the chart repository server.
+
+![upload charts](img/chartrepo/upload_charts.png)
+
+If the chart is signed, you can choose the corresponding provenance file from your filesystem and Click the `UPLOAD` button to upload them together at once.
+
+If the chart is successfully uploaded, it will be displayed in the chart list at once.
+
+#### List chart versions
+Clicking the chart name from the chart list will show all the available versions of that chart with the following information:
+* the chart version number
+* the maintainers of the chart version
+* the template engine used (default is gotpl)
+* the created timestamp of the chart version
+
+![list charts versions](img/chartrepo/list_chart_versions.png)
+
+Obviously, there will be at least 1 version for each of the charts in the top chart list. Same with chart list view, you can also click the icon buttons on the top right to switch views between card view and list view.
+
+Check the checkbox at the 1st column to select the specified chart versions:
+* Click the `DELETE` button to delete all the selected chart versions from the chart repository server. Batch operation is supported.
+* Click the `DOWNLOAD` button to download the chart artifact file. Batch operation is not supported.
+* Click the `UPLOAD` button to upload the new chart version for the current chart
+
+#### View chart version details
+Clicking the chart version number link will open the chart version details view. You can see more details about the specified chart version here. There are three content sections:
+* **Summary:**
+  * readme of the chart
+  * overall metadata like home, created timestamp and application version
+  * related helm commands for reference, such as `helm add repo` and `helm install` etc.
+![chart details](img/chartrepo/chart_details.png)
+* **Dependencies:**
+  * list all the dependant sun charts with 'name', 'version' and 'repository' fields
+![chart dependencies](img/chartrepo/chart_dependencies.png)
+* **Values:**
+  * display the content from `values.yaml` file with highlight code preview
+  * clicking the icon buttons on the top right to switch the yaml file view to k-v value pair list view
+![chart values](img/chartrepo/chart_values.png)
+
+Clicking the `DOWNLOAD` button on the top right will start the downloading process.
+
+### Working with Helm CLI
+As a helm chart repository, Harbor can work smoothly with Helm CLI. About how to install Helm CLI, please refer [install helm](https://docs.helm.sh/using_helm/#installing-helm). Run command `helm version` to make sure the version of Helm CLI is v2.9.1+.
+```
+helm version
+
+#Client: &version.Version{SemVer:"v2.9.1", GitCommit:"20adb27c7c5868466912eebdf6664e7390ebe710", GitTreeState:"clean"}
+#Server: &version.Version{SemVer:"v2.9.1", GitCommit:"20adb27c7c5868466912eebdf6664e7390ebe710", GitTreeState:"clean"}
+```
+#### Add harbor to the repository list
+Before working, Harbor should be added into the repository list with `helm repo add` command. Two different modes are supported.
+* Add Harbor as a unified single index entry point
+
+With this mode Helm can be made aware of all the charts located in different projects and which are accessible by the currently authenticated user.
+```
+helm repo add --ca-file ca.crt --cert-file server.crt --key-file server.key --username=admin --password=Passw0rd myrepo https://xx.xx.xx.xx/chartrepo
+```
+**NOTES:** Providing both ca file and cert files is caused by an issue from helm.
+
+* Add Harbor project as separate index entry point
+
+With this mode, helm can only pull charts in the specified project.
+```
+helm repo add --ca-file ca.crt --cert-file server.crt --key-file server.key --username=admin --password=Passw0rd myrepo https://xx.xx.xx.xx/chartrepo/myproject
+```
+
+#### Push charts to the repository server by CLI
+As an alternative, you can also upload charts via the CLI. It is not supported by the native helm CLI. A plugin from the community should be installed before pushing. Run `helm plugin install` to install the `push` plugin first.
+```
+helm plugin install https://github.com/chartmuseum/helm-push
+```
+After a successful installation,  run `push` command to upload your charts:
+```
+helm push --ca-file=ca.crt --key-file=server.key --cert-file=server.crt --username=admin --password=passw0rd chart_repo/hello-helm-0.1.0.tgz myrepo
+```
+**NOTES:** `push` command does not support pushing a prov file of a signed chart yet.
+
+#### Install charts
+Before installing, make sure your helm is correctly initialized with command `helm init` and the chart index is synchronized with command `helm repo update`.
+
+Search the chart with the keyword if you're not sure where it is:
+```
+helm search hello
+
+#NAME                            CHART VERSION   APP VERSION     DESCRIPTION                
+#local/hello-helm                0.3.10          1.3             A Helm chart for Kubernetes
+#myrepo/chart_repo/hello-helm    0.1.10          1.2             A Helm chart for Kubernetes
+#myrepo/library/hello-helm       0.3.10          1.3             A Helm chart for Kubernetes
+```
+Everything is ready, install the chart to your kubernetes:
+```
+helm install --ca-file=ca.crt --key-file=server.key --cert-file=server.crt --username=admin --password=Passw0rd --version 0.1.10 repo248/chart_repo/hello-helm
+```
+
+For other more helm commands like how to sign a chart, please refer to the [helm doc](https://docs.helm.sh/helm/#helm).
+

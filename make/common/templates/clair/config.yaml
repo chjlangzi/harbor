@@ -16,10 +16,10 @@ clair:
     # Deadline before an API request will respond with a 503
     timeout: 300s
   updater:
-    interval: 12h
+    interval: ${interval}h
 
   notifier:
     attempts: 3
     renotifyinterval: 2h
     http:
-      endpoint: http://ui:8080/service/notifications/clair
+      endpoint: http://core:8080/service/notifications/clair

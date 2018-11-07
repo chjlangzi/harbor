@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@ package client
 import (
 	"strings"
 
-	"github.com/vmware/harbor/src/adminserver/systeminfo/imagestorage"
-	"github.com/vmware/harbor/src/common/http"
-	"github.com/vmware/harbor/src/common/http/modifier/auth"
-	"github.com/vmware/harbor/src/common/utils"
+	"github.com/goharbor/harbor/src/common/http"
+	"github.com/goharbor/harbor/src/common/http/modifier/auth"
+	"github.com/goharbor/harbor/src/common/utils"
+	"github.com/goharbor/harbor/src/core/systeminfo/imagestorage"
 )
 
 // Client defines methods that an Adminserver client should implement
@@ -74,7 +74,7 @@ func (c *client) Ping() error {
 
 // GetCfgs ...
 func (c *client) GetCfgs() (map[string]interface{}, error) {
-	url := c.baseURL + "/api/configurations"
+	url := c.baseURL + "/api/configs"
 	cfgs := map[string]interface{}{}
 	if err := c.client.Get(url, &cfgs); err != nil {
 		return nil, err

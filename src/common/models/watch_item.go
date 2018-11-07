@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,11 +25,11 @@ type WatchItem struct {
 	Namespace    string    `orm:"column(namespace)" json:"namespace"`
 	OnDeletion   bool      `orm:"column(on_deletion)" json:"on_deletion"`
 	OnPush       bool      `orm:"column(on_push)" json:"on_push"`
-	CreationTime time.Time `orm:"column(creation_time)" json:"creation_time"`
-	UpdateTime   time.Time `orm:"column(update_time)" json:"update_time"`
+	CreationTime time.Time `orm:"column(creation_time);auto_now_add" json:"creation_time"`
+	UpdateTime   time.Time `orm:"column(update_time);auto_now" json:"update_time"`
 }
 
-//TableName ...
+// TableName ...
 func (w *WatchItem) TableName() string {
 	return "replication_immediate_trigger"
 }

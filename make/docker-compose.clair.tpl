@@ -1,10 +1,10 @@
 version: '2'
 services:
-  ui:
+  core:
     networks:
       harbor-clair:
         aliases:
-          - harbor-ui
+          - harbor-core
   jobservice:
     networks:
       - harbor-clair
@@ -20,9 +20,10 @@ services:
     networks:
       - harbor-clair
     container_name: clair
-    image: vmware/clair-photon:__clair_version__
+    image: goharbor/clair-photon:__clair_version__
     restart: always
-    cpu_quota: 150000
+    cpu_quota: 50000
+    dns_search: .
     depends_on:
       - postgresql
     volumes:

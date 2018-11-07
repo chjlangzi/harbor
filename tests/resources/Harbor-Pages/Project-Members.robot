@@ -1,4 +1,4 @@
-# Copyright 2016-2017 VMware, Inc. All Rights Reserved.
+# Copyright Project Harbor Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -90,7 +90,7 @@ Non-admin View Member Account
     Xpath Should Match X Times  //clr-dg-row-master  ${times}
 
 User Can Not Add Member
-    Page Should Contain Element  xpath=//button[@disabled='' and contains(.,'New')]
+    Page Should Contain Element  xpath=//button[@disabled='' and contains(.,'User')]
 
 Add Guest Member To Project
     [arguments]  ${member}
@@ -106,12 +106,12 @@ Add Guest Member To Project
 Delete Project Member
     [arguments]  ${member}
     Click Element  xpath=//clr-dg-row[contains(.,'${member}')]//input/../label
-    Click Element  xpath=${project_member_delete_button_xpath}
-    Sleep  2
-    Click Element  xpath=//button[contains(.,'DELETE')]
-    Sleep  2
-    Click Element  xpath=//button[contains(.,'CLOSE')]
+    Click Element  ${member_action_xpath}
     Sleep  1
+    Click Element  ${delete_action_xpath}
+    Sleep  2
+    Click Element  //clr-modal//button[contains(.,'DELETE')]
+    Sleep  3
 
 User Should Be Owner Of Project
     [Arguments]  ${user}  ${pwd}  ${project}

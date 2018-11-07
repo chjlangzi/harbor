@@ -1,4 +1,4 @@
-# Copyright 2016-2017 VMware, Inc. All Rights Reserved.
+# Copyright Project Harbor Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,4 +20,12 @@ ${project_create_xpath}  //clr-dg-action-bar//button[contains(.,'New')]
 ${self_reg_xpath}  //input[@id="clr-checkbox-selfReg"]
 ${test_ldap_xpath}  /html/body/harbor-app/harbor-shell/clr-main-container/div/div/config/div/div/div/button[3]
 ${config_save_button_xpath}  //config//div/button[contains(.,'SAVE')]
+${config_email_save_button_xpath}  //*[@id="config_email_save"]
+${config_auth_save_button_xpath}  //*[@id="config_auth_save"]
+${config_system_save_button_xpath}  //*[@id="config_system_save"]
+${vulnerbility_save_button_xpath}  //*[@id="config_vulnerbility_save"]
 ${configuration_xpath}  //clr-vertical-nav-group-children/a[contains(.,'Configuration')]
+${system_config_xpath}  //*[@id="config-system"]
+${garbage_collection_xpath}  //*[@id="config-gc"]
+${gc_now_xpath}  //*[@id="gc"]/gc-config/button
+${gc_log_details_xpath}  /html/body/harbor-app/harbor-shell/clr-main-container/div/div/config/div/div/section[6]/gc-config/clr-datagrid/div/div/div/clr-dg-table-wrapper/div[2]/clr-dg-row/div/clr-dg-cell[6]/a

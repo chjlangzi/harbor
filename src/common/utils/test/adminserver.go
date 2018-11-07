@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,8 +19,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/vmware/harbor/src/adminserver/systeminfo/imagestorage"
-	"github.com/vmware/harbor/src/common"
+	"github.com/goharbor/harbor/src/common"
 )
 
 var adminServerDefaultConfig = map[string]interface{}{
@@ -72,7 +71,7 @@ var adminServerDefaultConfig = map[string]interface{}{
 	common.UAAClientSecret:            "testsecret",
 	common.UAAEndpoint:                "10.192.168.5",
 	common.UAAVerifyCert:              false,
-	common.UIURL:                      "http://myui:8888/",
+	common.CoreURL:                    "http://myui:8888/",
 	common.JobServiceURL:              "http://myjob:8888/",
 	common.ReadOnly:                   false,
 	common.NotaryURL:                  "http://notary-server:4443",
@@ -102,7 +101,7 @@ func NewAdminserver(config map[string]interface{}) (*httptest.Server, error) {
 
 	m = append(m, &RequestHandlerMapping{
 		Method:  "GET",
-		Pattern: "/api/configurations",
+		Pattern: "/api/configs",
 		Handler: Handler(resp),
 	})
 
@@ -122,34 +121,7 @@ func NewAdminserver(config map[string]interface{}) (*httptest.Server, error) {
 		}),
 	})
 
-	capacityHandler, err := NewCapacityHandle()
-	if err != nil {
-		return nil, err
-	}
-	m = append(m, &RequestHandlerMapping{
-		Method:  "GET",
-		Pattern: "/api/systeminfo/capacity",
-		Handler: capacityHandler,
-	})
-
 	return NewServer(m...), nil
-}
-
-// NewCapacityHandle ...
-func NewCapacityHandle() (func(http.ResponseWriter, *http.Request), error) {
-	capacity := imagestorage.Capacity{
-		Total: 100,
-		Free:  90,
-	}
-	b, err := json.Marshal(capacity)
-	if err != nil {
-		return nil, err
-	}
-	resp := &Response{
-		StatusCode: http.StatusOK,
-		Body:       b,
-	}
-	return Handler(resp), nil
 }
 
 // GetDefaultConfigMap returns the defailt config map for easier modification.

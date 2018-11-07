@@ -5,9 +5,7 @@ Harbor can be installed by one of three approaches:
 
 - **Offline installer:** Use this installer when the host does not have an Internet connection. The installer contains pre-built images so its size is larger.
 
-- **OVA installer:** Use this installer when user have a vCenter environment, Harbor is launched after OVA deployed. Detail information please refer **[Harbor OVA install guide](install_guide_ova.md)**
-
-All installers can be downloaded from the **[official release](https://github.com/vmware/harbor/releases)** page. 
+All installers can be downloaded from the **[official release](https://github.com/goharbor/harbor/releases)** page. 
 
 This guide describes the steps to install and configure Harbor by using the online or offline installer. The installation processes are almost the same. 
 
@@ -20,21 +18,21 @@ Harbor is deployed as several Docker containers, and, therefore, can be deployed
 ### Hardware
 |Resource|Capacity|Description|
 |---|---|---|
-|CPU|minimal 2 CPU|4 CPU is prefered|
-|Mem|minimal 4GB|8GB is prefered|
-|Disk|minimal 40GB|160GB is prefered|
+|CPU|minimal 2 CPU|4 CPU is preferred|
+|Mem|minimal 4GB|8GB is preferred|
+|Disk|minimal 40GB|160GB is preferred|
 ### Software
 |Software|Version|Description|
 |---|---|---|
 |Python|version 2.7 or higher|Note that you may have to install Python on Linux distributions (Gentoo, Arch) that do not come with a Python interpreter installed by default|
 |Docker engine|version 1.10 or higher|For installation instructions, please refer to: https://docs.docker.com/engine/installation/|
 |Docker Compose|version 1.6.0 or higher|For installation instructions, please refer to: https://docs.docker.com/compose/install/|
-|Openssl|latest is prefered|Generate certificate and keys for Harbor|
+|Openssl|latest is preferred|Generate certificate and keys for Harbor|
 ### Network ports 
 |Port|Protocol|Description|
 |---|---|---|
 |443|HTTPS|Harbor UI and API will accept requests on this port for https protocol|
-|4443|HTTS|Connections to the Docker Content Trust service for Harbor, only needed when Notary is enabled|
+|4443|HTTPS|Connections to the Docker Content Trust service for Harbor, only needed when Notary is enabled|
 |80|HTTP|Harbor UI and API will accept requests on this port for http protocol|
 
 ## Installation Steps
@@ -48,7 +46,7 @@ The installation steps boil down to the following
 
 #### Downloading the installer:
 
-The binary of the installer can be downloaded from the [release](https://github.com/vmware/harbor/releases) page. Choose either online or offline installer. Use *tar* command to extract the package.
+The binary of the installer can be downloaded from the [release](https://github.com/goharbor/harbor/releases) page. Choose either online or offline installer. Use *tar* command to extract the package.
 
 Online installer:
 ```
@@ -175,9 +173,15 @@ To install Harbor with Clair service, add a parameter when you run ```install.sh
 For more information about Clair, please refer to Clair's documentation: 
 https://coreos.com/clair/docs/2.0.1/
 
-**Note**: If you want to install both Notary and Clair, you must specify both parameters in the same command:
+##### Installation with chart repository service
+To install Harbor with chart repository service, add a parameter when you run ```install.sh```:
 ```sh
-    $ sudo ./install.sh --with-notary --with-clair
+    $ sudo ./install.sh --with-chartmuseum
+```
+
+**Note**: If you want to install Notary, Clair and chart repository service, you must specify all the parameters in the same command:
+```sh
+    $ sudo ./install.sh --with-notary --with-clair --with-chartmuseum
 ```
 
 For information on how to use Harbor, please refer to **[User Guide of Harbor](user_guide.md)** .
@@ -194,7 +198,7 @@ Stopping Harbor:
 $ sudo docker-compose stop
 Stopping nginx ... done
 Stopping harbor-jobservice ... done
-Stopping harbor-ui ... done
+Stopping harbor-core ... done
 Stopping harbor-db ... done
 Stopping registry ... done
 Stopping harbor-log ... done
@@ -257,14 +261,28 @@ $ sudo prepare --with-clair
 $ sudo docker-compose -f ./docker-compose.yml -f ./docker-compose.clair.yml up -d
 ```
 
-#### _Managing lifecycle of Harbor when it's installed with Notary and Clair_ 
+#### _Managing lifecycle of Harbor when it's installed with chart repository service_ 
 
-If you have installed Notary and Clair, you should include both components in the docker-compose and prepare commands:
+When Harbor is installed with chart repository service, an extra template file ```docker-compose.chartmuseum.yml``` is needed for docker-compose commands. The docker-compose commands to manage the lifecycle of Harbor are:
+```
+$ sudo docker-compose -f ./docker-compose.yml -f ./docker-compose.chartmuseum.yml [ up|down|ps|stop|start ]
+```
+For example, if you want to change configuration in ```harbor.cfg``` and re-deploy Harbor when it's installed with chart repository service, the following commands should be used:
 ```sh
-$ sudo docker-compose -f ./docker-compose.yml -f ./docker-compose.notary.yml -f ./docker-compose.clair.yml down -v
+$ sudo docker-compose -f ./docker-compose.yml -f ./docker-compose.chartmuseum.yml down -v
 $ vim harbor.cfg
-$ sudo prepare --with-notary --with-clair
-$ sudo docker-compose -f ./docker-compose.yml -f ./docker-compose.notary.yml -f ./docker-compose.clair.yml up -d
+$ sudo prepare --with-chartmuseum
+$ sudo docker-compose -f ./docker-compose.yml -f ./docker-compose.chartmuseum.yml up -d
+```
+
+#### _Managing lifecycle of Harbor when it's installed with Notary, Clair and chart repository service_ 
+
+If you want to install Notary, Clair and chart repository service together, you should include all the components in the docker-compose and prepare commands:
+```sh
+$ sudo docker-compose -f ./docker-compose.yml -f ./docker-compose.notary.yml -f ./docker-compose.clair.yml -f ./docker-compose.chartmuseum.yml down -v
+$ vim harbor.cfg
+$ sudo prepare --with-notary --with-clair --with-chartmuseum
+$ sudo docker-compose -f ./docker-compose.yml -f ./docker-compose.notary.yml -f ./docker-compose.clair.yml -f ./docker-compose.chartmuseum.yml up -d
 ```
 
 Please check the [Docker Compose command-line reference](https://docs.docker.com/compose/reference/) for more on docker-compose.
@@ -309,9 +327,9 @@ proxy:
 hostname = 192.168.0.2:8888
 ```
 
-3.Re-deploy Harbor refering to previous section "Managing Harbor's lifecycle".
+3.Re-deploy Harbor referring to previous section "Managing Harbor's lifecycle".
 ### For HTTPS protocol
-1.Enable HTTPS in Harbor by following this [guide](https://github.com/vmware/harbor/blob/master/docs/configure_https.md).  
+1.Enable HTTPS in Harbor by following this [guide](https://github.com/goharbor/harbor/blob/master/docs/configure_https.md).  
 2.Modify docker-compose.yml  
 Replace the first "443" to a customized port, e.g. 8888:443.  
 
@@ -342,7 +360,7 @@ proxy:
 hostname = 192.168.0.2:8888
 ```
 
-4.Re-deploy Harbor refering to previous section "Managing Harbor's lifecycle". 
+4.Re-deploy Harbor referring to previous section "Managing Harbor's lifecycle".
 
 
 ## Performance tuning
@@ -357,11 +375,11 @@ By default, Harbor limits the CPU usage of Clair container to 150000 and avoids 
   harbor-db           docker-entrypoint.sh mysqld      Up      3306/tcp                                 
   harbor-jobservice   /harbor/harbor_jobservice        Up                                               
   harbor-log          /bin/sh -c crond && rsyslo ...   Up      127.0.0.1:1514->514/tcp                    
-  harbor-ui           /harbor/harbor_ui                Up                                               
+  harbor-core           /harbor/harbor_core            Up                                               
   nginx               nginx -g daemon off;             Up      0.0.0.0:443->443/tcp, 0.0.0.0:80->80/tcp 
   registry            /entrypoint.sh serve /etc/ ...   Up      5000/tcp                                 
 ```
-If a container is not in **UP** state, check the log file of that container in directory ```/var/log/harbor```. For example, if the container ```harbor-ui``` is not running, you should look at the log file ```ui.log```.  
+If a container is not in **UP** state, check the log file of that container in directory ```/var/log/harbor```. For example, if the container ```harbor-core``` is not running, you should look at the log file ```ui.log```.  
 
 
 2.When setting up Harbor behind an nginx proxy or elastic load balancing, look for the line below, in `common/templates/nginx/nginx.http.conf` and remove it from the sections if the proxy already has similar settings: `location /`, `location /v2/` and `location /service/`.

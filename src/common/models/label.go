@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/astaxie/beego/validation"
-	"github.com/vmware/harbor/src/common"
+	"github.com/goharbor/harbor/src/common"
 )
 
 // Label holds information used for a label
@@ -31,8 +31,9 @@ type Label struct {
 	Level        string    `orm:"column(level)" json:"-"`
 	Scope        string    `orm:"column(scope)" json:"scope"`
 	ProjectID    int64     `orm:"column(project_id)" json:"project_id"`
-	CreationTime time.Time `orm:"column(creation_time)" json:"creation_time"`
-	UpdateTime   time.Time `orm:"column(update_time)" json:"update_time"`
+	CreationTime time.Time `orm:"column(creation_time);auto_now_add" json:"creation_time"`
+	UpdateTime   time.Time `orm:"column(update_time);auto_now" json:"update_time"`
+	Deleted      bool      `orm:"column(deleted)" json:"deleted"`
 }
 
 // TableName ...
@@ -42,10 +43,11 @@ func (l *Label) TableName() string {
 
 // LabelQuery : query parameters for labels
 type LabelQuery struct {
-	Name      string
-	Level     string
-	Scope     string
-	ProjectID int64
+	Name           string
+	FuzzyMatchName bool // the property is used to determine the query for lable name is fuzzy matching or exaxt matching
+	Level          string
+	Scope          string
+	ProjectID      int64
 	Pagination
 }
 
@@ -72,8 +74,8 @@ type ResourceLabel struct {
 	ResourceID   int64     `orm:"column(resource_id)"`
 	ResourceName string    `orm:"column(resource_name)"`
 	ResourceType string    `orm:"column(resource_type)"`
-	CreationTime time.Time `orm:"column(creation_time)"`
-	UpdateTime   time.Time `orm:"column(update_time)"`
+	CreationTime time.Time `orm:"column(creation_time);auto_now_add"`
+	UpdateTime   time.Time `orm:"column(update_time);auto_now"`
 }
 
 // TableName ...

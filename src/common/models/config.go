@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,6 +50,7 @@ type PostGreSQL struct {
 	Username string `json:"username"`
 	Password string `json:"password,omitempty"`
 	Database string `json:"database"`
+	SSLMode  string `json:"sslmode"`
 }
 
 // Email ...
@@ -77,7 +78,7 @@ type TokenService struct {
 
 // SystemCfg holds all configurations of system
 type SystemCfg struct {
-	DomainName                 string          `json:"domain_name"` // Harbor external URL: protocal://host:port
+	DomainName                 string          `json:"domain_name"` // Harbor external URL: protocol://host:port
 	Authentication             *Authentication `json:"authentication"`
 	Database                   *Database       `json:"database"`
 	TokenService               *TokenService   `json:"token_service"`

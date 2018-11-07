@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ type LdapGroupConf struct {
 	LdapGroupFilter        string `json:"ldap_group_filter,omitempty"`
 	LdapGroupNameAttribute string `json:"ldap_group_name_attribute,omitempty"`
 	LdapGroupSearchScope   int    `json:"ldap_group_search_scope"`
+	LdapGroupAdminDN       string `json:"ldap_group_admin_dn,omitempty"`
 }
 
 // LdapUser ...
@@ -44,7 +45,7 @@ type LdapUser struct {
 	GroupDNList []string `json:"ldap_groupdn"`
 }
 
-//LdapImportUser ...
+// LdapImportUser ...
 type LdapImportUser struct {
 	LdapUIDList []string `json:"ldap_uid_list"`
 }

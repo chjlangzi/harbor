@@ -1,4 +1,4 @@
-// Copyright (c) 2017 VMware, Inc. All Rights Reserved.
+// Copyright Project Harbor Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,24 +17,24 @@ package source
 import (
 	"strings"
 
-	"github.com/vmware/harbor/src/common/utils"
-	"github.com/vmware/harbor/src/common/utils/log"
-	"github.com/vmware/harbor/src/replication"
-	"github.com/vmware/harbor/src/replication/models"
-	"github.com/vmware/harbor/src/replication/registry"
+	"github.com/goharbor/harbor/src/common/utils"
+	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/replication"
+	"github.com/goharbor/harbor/src/replication/models"
+	"github.com/goharbor/harbor/src/replication/registry"
 )
 
 // RepositoryFilter implement Filter interface to filter repository
 type RepositoryFilter struct {
 	pattern   string
-	convertor Convertor
+	converter Converter
 }
 
 // NewRepositoryFilter returns an instance of RepositoryFilter
 func NewRepositoryFilter(pattern string, registry registry.Adaptor) *RepositoryFilter {
 	return &RepositoryFilter{
 		pattern:   pattern,
-		convertor: NewRepositoryConvertor(registry),
+		converter: NewRepositoryConverter(registry),
 	}
 }
 
@@ -43,9 +43,9 @@ func (r *RepositoryFilter) Init() error {
 	return nil
 }
 
-// GetConvertor ...
-func (r *RepositoryFilter) GetConvertor() Convertor {
-	return r.convertor
+// GetConverter ...
+func (r *RepositoryFilter) GetConverter() Converter {
+	return r.converter
 }
 
 // DoFilter filters repository and image(according to the repository part) and drops any other resource types
@@ -76,8 +76,8 @@ func (r *RepositoryFilter) DoFilter(items []models.FilterItem) []models.FilterIt
 			_, repository = utils.ParseRepository(repository)
 			matched, err := match(r.pattern, repository)
 			if err != nil {
-				log.Errorf("failed to match pattern %s to value %s: %v", r.pattern, repository, err)
-				break
+				log.Errorf("failed to match pattern %s to value %s: %v, skip it", r.pattern, repository, err)
+				continue
 			}
 			if matched {
 				log.Debugf("pattern %s matched, add %s to the repository filter result list", r.pattern, item.Value)
